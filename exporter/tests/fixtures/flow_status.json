@@ -1,0 +1,224 @@
+{
+  "processGroupStatus": {
+    "id": "root-id",
+    "name": "NiFi Flow",
+    "statsLastRefreshed": "01:00:00 UTC",
+    "aggregateSnapshot": {
+      "id": "root-id",
+      "name": "NiFi Flow",
+      "flowFilesIn": 0,
+      "bytesIn": 0,
+      "flowFilesOut": 0,
+      "bytesOut": 0,
+      "flowFilesQueued": 190,
+      "bytesQueued": 786432000,
+      "activeThreadCount": 7,
+      "terminatedThreadCount": 0,
+      "processingNanos": 2534200000000,
+      "processorStatusSnapshots": [
+        {
+          "id": "proc-gen",
+          "canRead": true,
+          "processorStatusSnapshot": {
+            "id": "proc-gen",
+            "groupId": "root-id",
+            "name": "GenerateFlowFile",
+            "type": "GenerateFlowFile",
+            "runStatus": "Running",
+            "executionNode": "ALL",
+            "bytesRead": 0,
+            "bytesWritten": 1024000,
+            "flowFilesIn": 0,
+            "bytesIn": 0,
+            "flowFilesOut": 1000,
+            "bytesOut": 1024000,
+            "taskCount": 500,
+            "tasksDurationNanos": 1500000000,
+            "activeThreadCount": 1,
+            "terminatedThreadCount": 0
+          }
+        }
+      ],
+      "connectionStatusSnapshots": [],
+      "processGroupStatusSnapshots": [
+        {
+          "id": "pg-ingest",
+          "canRead": true,
+          "processGroupStatusSnapshot": {
+            "id": "pg-ingest",
+            "name": "ingest",
+            "flowFilesIn": 1000,
+            "bytesIn": 1024000,
+            "flowFilesOut": 810,
+            "bytesOut": 900000,
+            "flowFilesQueued": 190,
+            "bytesQueued": 786432000,
+            "activeThreadCount": 6,
+            "terminatedThreadCount": 1,
+            "processingNanos": 1000000000,
+            "processorStatusSnapshots": [
+              {
+                "id": "proc-put",
+                "canRead": true,
+                "processorStatusSnapshot": {
+                  "id": "proc-put",
+                  "groupId": "pg-ingest",
+                  "name": "PutHDFS",
+                  "type": "PutHDFS",
+                  "runStatus": "Running",
+                  "executionNode": "ALL",
+                  "bytesRead": 900000,
+                  "bytesWritten": 0,
+                  "flowFilesIn": 810,
+                  "bytesIn": 900000,
+                  "flowFilesOut": 810,
+                  "bytesOut": 900000,
+                  "taskCount": 100,
+                  "tasksDurationNanos": 60000000000,
+                  "activeThreadCount": 5,
+                  "terminatedThreadCount": 1
+                }
+              },
+              {
+                "id": "proc-bad",
+                "canRead": true,
+                "processorStatusSnapshot": {
+                  "id": "proc-bad",
+                  "groupId": "pg-ingest",
+                  "name": "BrokenProcessor",
+                  "type": "UpdateAttribute",
+                  "runStatus": "Invalid",
+                  "executionNode": "PRIMARY",
+                  "bytesRead": 0,
+                  "bytesWritten": 0,
+                  "flowFilesIn": 0,
+                  "bytesIn": 0,
+                  "flowFilesOut": 0,
+                  "bytesOut": 0,
+                  "taskCount": 0,
+                  "tasksDurationNanos": 0,
+                  "activeThreadCount": 0,
+                  "terminatedThreadCount": 0
+                }
+              }
+            ],
+            "connectionStatusSnapshots": [
+              {
+                "id": "conn-1",
+                "canRead": true,
+                "connectionStatusSnapshot": {
+                  "id": "conn-1",
+                  "groupId": "pg-ingest",
+                  "name": "success",
+                  "sourceName": "in",
+                  "destinationName": "PutHDFS",
+                  "flowFilesIn": 1000,
+                  "bytesIn": 1024000,
+                  "flowFilesOut": 810,
+                  "bytesOut": 900000,
+                  "flowFilesQueued": 190,
+                  "bytesQueued": 786432000,
+                  "queuedCount": "190",
+                  "queuedSize": "750 MB",
+                  "queued": "190 / 750 MB",
+                  "percentUseCount": 1,
+                  "percentUseBytes": 73,
+                  "flowFileAvailability": "ACTIVE"
+                }
+              }
+            ],
+            "processGroupStatusSnapshots": [
+              {
+                "id": "pg-deep",
+                "canRead": true,
+                "processGroupStatusSnapshot": {
+                  "id": "pg-deep",
+                  "name": "deep/child",
+                  "flowFilesIn": 0,
+                  "bytesIn": 0,
+                  "flowFilesOut": 0,
+                  "bytesOut": 0,
+                  "flowFilesQueued": 0,
+                  "bytesQueued": 0,
+                  "activeThreadCount": 0,
+                  "terminatedThreadCount": 0,
+                  "processingNanos": 0,
+                  "processorStatusSnapshots": [],
+                  "connectionStatusSnapshots": [],
+                  "processGroupStatusSnapshots": []
+                }
+              }
+            ],
+            "inputPortStatusSnapshots": [
+              {
+                "id": "port-in",
+                "canRead": true,
+                "portStatusSnapshot": {
+                  "id": "port-in",
+                  "groupId": "pg-ingest",
+                  "name": "in",
+                  "activeThreadCount": 1,
+                  "flowFilesIn": 1000,
+                  "bytesIn": 1024000,
+                  "flowFilesOut": 1000,
+                  "bytesOut": 1024000,
+                  "transmitting": false,
+                  "runStatus": "Running"
+                }
+              }
+            ],
+            "outputPortStatusSnapshots": [
+              {
+                "id": "port-out",
+                "canRead": true,
+                "portStatusSnapshot": {
+                  "id": "port-out",
+                  "groupId": "pg-ingest",
+                  "name": "out",
+                  "activeThreadCount": 0,
+                  "flowFilesIn": 0,
+                  "bytesIn": 0,
+                  "flowFilesOut": 0,
+                  "bytesOut": 0,
+                  "transmitting": false,
+                  "runStatus": "Invalid"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "pg-excluded",
+          "canRead": true,
+          "processGroupStatusSnapshot": {
+            "id": "pg-excluded",
+            "name": "excluded",
+            "flowFilesQueued": 99999,
+            "bytesQueued": 1,
+            "processorStatusSnapshots": [],
+            "connectionStatusSnapshots": [],
+            "processGroupStatusSnapshots": []
+          }
+        }
+      ],
+      "remoteProcessGroupStatusSnapshots": [
+        {
+          "id": "rpg-1",
+          "canRead": true,
+          "remoteProcessGroupStatusSnapshot": {
+            "id": "rpg-1",
+            "groupId": "root-id",
+            "name": "dc2",
+            "targetUri": "https://dc2-nifi:8443/nifi",
+            "transmissionStatus": "Transmitting",
+            "activeThreadCount": 2,
+            "flowFilesSent": 50,
+            "bytesSent": 51200,
+            "flowFilesReceived": 0,
+            "bytesReceived": 0
+          }
+        }
+      ]
+    }
+  }
+}

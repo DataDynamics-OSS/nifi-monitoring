@@ -1,0 +1,13 @@
+# CFM 4.12.0 SP1 클러스터용 nifi-exporter 설정입니다.
+# 실제 주소는 커밋하지 않고 환경변수 NIFI_BASE_URL(.env)로 덮어씁니다.
+nifi:
+  base_url: http://cfm-nifi.example.com:18081
+  cluster_name: cfm
+  # heartbeat가 "EDT"로 옵니다. 지정하지 않으면(UTC) 4시간 어긋나
+  # NiFiNodeHeartbeatStale이 잘못 발화합니다. IANA 이름이라 EST/EDT 전환도 맞습니다
+  timezone: America/New_York
+  # TLS·인증 없는 NiFi입니다(anonymous). HTTP 주소에는 none만 허용됩니다
+  auth: { mode: none }
+server:
+  listen: 0.0.0.0:9103
+  log_format: json

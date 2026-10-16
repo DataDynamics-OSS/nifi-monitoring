@@ -1,0 +1,13 @@
+# 로컬 스택용 nifi-exporter 설정입니다 (/etc/nifi-exporter/config.yaml로 마운트합니다).
+nifi:
+  base_url: https://nifi-1:8443
+  cluster_name: local
+  timezone: UTC
+  tls: { ca_file: /certs/ca.pem }
+  auth: { mode: mtls, cert_file: /certs/nifi-monitor.pem, key_file: /certs/nifi-monitor.key }
+collectors:
+  bulletin: { interval: 15s }
+server:
+  listen: 0.0.0.0:9103
+  log_format: json
+  basic_auth: { username: prometheus, password_file: /certs/metrics-password }

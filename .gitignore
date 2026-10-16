@@ -1,0 +1,24 @@
+# Python 빌드·가상환경 파일입니다
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# 로컬 설정과 비밀값입니다
+exporter/config.yaml
+# exporter 디렉토리에서 bin/ 스크립트를 바로 쓸 때 생기는 파일입니다(make lib)
+exporter/lib/
+exporter/logs/
+exporter/config/nifi-exporter.yaml
+exporter/config/alert-relay.yaml
+exporter/config/secrets/
+*.pem
+*.key
+deploy/local/certs/
+
+# CFM 배포 구성의 실제 주소입니다(공개 저장소이므로 커밋하지 않습니다)
+deploy/cfm/.env

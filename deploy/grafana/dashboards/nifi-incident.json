@@ -1,0 +1,725 @@
+{
+  "uid": "nifi-incident",
+  "title": "NiFi / 장애 분석",
+  "tags": [
+    "nifi"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "cluster",
+        "label": "클러스터",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(nifi_pg_info, cluster)",
+          "refId": "var-cluster"
+        },
+        "definition": "label_values(nifi_pg_info, cluster)",
+        "regex": "",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "allValue": ".*",
+        "multi": false,
+        "current": {}
+      },
+      {
+        "name": "pg_id",
+        "label": "프로세스 그룹",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "query_result(nifi_pg_info{cluster=\"$cluster\"})",
+          "refId": "var-pg_id"
+        },
+        "definition": "query_result(nifi_pg_info{cluster=\"$cluster\"})",
+        "regex": "/pg_id=\"(?<value>[^\"]+)\".*pg_path=\"(?<text>[^\"]+)\"/",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "current": {}
+      },
+      {
+        "name": "provenance_url",
+        "label": "Provenance 조회 서비스",
+        "type": "constant",
+        "hide": 2,
+        "query": "http://localhost:19104"
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "알림",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "enable": true,
+        "iconColor": "red",
+        "expr": "ALERTS{alertstate=\"firing\", cluster=\"$cluster\"} unless ALERTS{alertstate=\"firing\", cluster=\"$cluster\"} offset 2m",
+        "step": "60s",
+        "titleFormat": "{{alertname}}",
+        "textFormat": "{{severity}} {{connection_id}}{{processor_id}}{{node_id}}",
+        "useValueForTime": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "nifi"
+      ],
+      "asDropdown": false,
+      "includeVars": true,
+      "keepTime": true,
+      "title": "NiFi 대시보드"
+    }
+  ],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "수집기 상태",
+      "description": "nifi_exporter_collector_success입니다. 실패이면 그 수집기의 메트릭이 노출되지 않으므로, 아래에서 비어 있는 값은 0이 아니라 '미수집'입니다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "min by (collector) (nifi_exporter_collector_success{cluster=\"$cluster\"})",
+          "legendFormat": "{{collector}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "정상",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "실패",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "links": [],
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 3
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Exporter 스크레이프",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "min(up{job=\"nifi-exporter\", cluster=\"$cluster\"})",
+          "legendFormat": "__auto",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "정상",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "실패",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "links": [],
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      }
+    },
+    {
+      "type": "stat",
+      "title": "수집 지연",
+      "description": "가장 늦은 수집기의 마지막 성공 후 경과 시간을 수집 주기로 나눈 배수입니다. 2 미만이 정상이며, 3에서 NiFiCollectorStale이 발화합니다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "max((time() - nifi_exporter_collector_last_success_timestamp_seconds{cluster=\"$cluster\"}) / nifi_exporter_collector_interval_seconds{cluster=\"$cluster\"})",
+          "legendFormat": "__auto",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:×",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 2,
+                "color": "orange"
+              },
+              {
+                "value": 3,
+                "color": "red"
+              }
+            ]
+          },
+          "mappings": [],
+          "links": [],
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "프로세서별 ERROR Bulletin (5분)",
+      "description": "점을 클릭하면 그 시점까지 5분 동안의 Provenance를 조회합니다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "topk(10, nifi:bulletins_error:increase5m{cluster=\"$cluster\"} * on (cluster, source_id) group_left (name) label_replace(nifi_processor_info{cluster=\"$cluster\"}, \"source_id\", \"$1\", \"processor_id\", \"(.*)\"))",
+          "legendFormat": "{{name}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
+          "links": [
+            {
+              "title": "Provenance 조회 (이 시점까지 5분)",
+              "url": "${provenance_url:raw}/provenance?cluster=${cluster}&processor_id=${__field.labels.source_id}&at=${__value.time}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "가장 빨리 쌓이는 큐 (Δ10분)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "topk(10, nifi:connection_queued_flowfiles:delta10m{cluster=\"$cluster\"} * on (cluster, connection_id) group_left (name, source_name, destination_name) nifi_connection_info{cluster=\"$cluster\"})",
+          "legendFormat": "{{source_name}} → {{destination_name}} ({{name}})",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Backpressure 사용률 (상위 10)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "topk(10, nifi:connection_percent_used:max{cluster=\"$cluster\"} * on (cluster, connection_id) group_left (name, source_name, destination_name) nifi_connection_info{cluster=\"$cluster\"})",
+          "legendFormat": "{{source_name}} → {{destination_name}} ({{name}})",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "가장 느린 프로세서 (평균 Task)",
+      "description": "점을 클릭하면 그 시점까지 5분 동안의 Provenance를 조회합니다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "topk(10, nifi:processor_task_duration_avg_seconds_5m{cluster=\"$cluster\"} * on (cluster, processor_id) group_left (name) nifi_processor_info{cluster=\"$cluster\"})",
+          "legendFormat": "{{name}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
+          "links": [
+            {
+              "title": "Provenance 조회 (이 시점까지 5분)",
+              "url": "${provenance_url:raw}/provenance?cluster=${cluster}&processor_id=${__field.labels.processor_id}&at=${__value.time}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "연결된 노드",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "nifi_cluster_nodes_connected{cluster=\"$cluster\"}",
+          "legendFormat": "연결됨",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "B",
+          "expr": "nifi_cluster_nodes_total{cluster=\"$cluster\"}",
+          "legendFormat": "전체",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Heap 사용률",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "nifi_jvm_heap_utilization{cluster=\"$cluster\"} * on (cluster, node_id) group_left (address) nifi_node_info{cluster=\"$cluster\"} or on (cluster, node_id) label_replace(nifi_jvm_heap_utilization{cluster=\"$cluster\"}, \"address\", \"$1\", \"node_id\", \"(.*)\")",
+          "legendFormat": "{{address}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 9,
+      "gridPos": {
+        "x": 8,
+        "y": 19,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GC 시간 비율",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "nifi:jvm_gc_time_ratio:rate5m{cluster=\"$cluster\"} * on (cluster, node_id) group_left (address) nifi_node_info{cluster=\"$cluster\"} or on (cluster, node_id) label_replace(nifi:jvm_gc_time_ratio:rate5m{cluster=\"$cluster\"}, \"address\", \"$1\", \"node_id\", \"(.*)\")",
+          "legendFormat": "{{address}}",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 10,
+      "gridPos": {
+        "x": 16,
+        "y": 19,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "text",
+      "title": "Provenance",
+      "options": {
+        "mode": "markdown",
+        "content": "**프로세서별 ERROR Bulletin**과 **가장 느린 프로세서** 그래프의 점을 클릭하면 그 프로세서의 Provenance를 그 시점까지 5분 범위로 새 탭에서 조회합니다(nifi-provenance-query, `http://localhost:19104`). 이벤트 종류·시각·노드·FlowFile UUID만 보여 주고 속성과 내용은 보여 주지 않습니다. 더 넓은 범위나 내용은 NiFi UI의 *Data Provenance*에서 Component ID로 검색합니다."
+      },
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 3
+      }
+    }
+  ]
+}

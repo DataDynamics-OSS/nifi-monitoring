@@ -1,0 +1,74 @@
+{
+  "provenance": {
+    "id": "3eda9878-01a1-1000-ffff-ffffac4d9953",
+    "uri": "https://localhost:18443/nifi-api/provenance/3eda9878-01a1-1000-ffff-ffffac4d9953",
+    "submissionTime": "10/15/2026 09:17:55.719 UTC",
+    "expiration": "10/15/2026 09:47:55.735 UTC",
+    "percentCompleted": 100,
+    "finished": true,
+    "request": {
+      "searchTerms": {
+        "Component ID": {
+          "value": "3e101a53-01a1-1000-ffff-ffffb97c8c1c",
+          "inverse": false
+        }
+      },
+      "startDate": "10/15/2026 09:16:55 UTC",
+      "endDate": "10/15/2026 09:17:55 UTC",
+      "maxResults": 2
+    },
+    "results": {
+      "provenanceEvents": [
+        {
+          "id": "32c7c29c-e9a9-4293-b05b-43518f17be7b9190",
+          "eventId": 9190,
+          "eventTime": "10/15/2026 09:17:54.920 UTC",
+          "eventDuration": 0,
+          "lineageDuration": 6,
+          "eventType": "DROP",
+          "flowFileUuid": "1ddc1100-74aa-4dde-97d3-3203a1b94e81",
+          "fileSize": "0 bytes",
+          "fileSizeBytes": 0,
+          "clusterNodeId": "32c7c29c-e9a9-4293-b05b-43518f17be7b",
+          "clusterNodeAddress": "nifi-2:8443",
+          "groupId": "3e1019ac-01a1-1000-ffff-ffffb9f55369",
+          "componentId": "3e101a53-01a1-1000-ffff-ffffb97c8c1c",
+          "componentType": "LogMessage",
+          "componentName": "log-error",
+          "parentUuids": [],
+          "childUuids": [],
+          "details": "Auto-Terminated by success Relationship",
+          "replayAvailable": false,
+          "replayExplanation": "Unable to view the data for Processor with ID 3e101a53-01a1-1000-ffff-ffffb97c8c1c."
+        },
+        {
+          "id": "a963e225-2fff-4fba-99b1-e1a099e65cc410655",
+          "eventId": 10655,
+          "eventTime": "10/15/2026 09:17:54.322 UTC",
+          "eventDuration": 0,
+          "lineageDuration": 7,
+          "eventType": "DROP",
+          "flowFileUuid": "37ce0b11-30b1-4c5b-832a-5d304b7de6a3",
+          "fileSize": "0 bytes",
+          "fileSizeBytes": 0,
+          "clusterNodeId": "a963e225-2fff-4fba-99b1-e1a099e65cc4",
+          "clusterNodeAddress": "nifi-1:8443",
+          "groupId": "3e1019ac-01a1-1000-ffff-ffffb9f55369",
+          "componentId": "3e101a53-01a1-1000-ffff-ffffb97c8c1c",
+          "componentType": "LogMessage",
+          "componentName": "log-error",
+          "parentUuids": [],
+          "childUuids": [],
+          "details": "Auto-Terminated by success Relationship",
+          "replayAvailable": false,
+          "replayExplanation": "Unable to view the data for Processor with ID 3e101a53-01a1-1000-ffff-ffffb97c8c1c."
+        }
+      ],
+      "total": "2+",
+      "totalCount": 2,
+      "generated": "09:17:56 UTC",
+      "oldestEvent": "10/15/2026 05:36:44 UTC",
+      "timeOffset": 0
+    }
+  }
+}

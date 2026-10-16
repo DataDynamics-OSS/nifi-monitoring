@@ -1,0 +1,179 @@
+# NiFi 2.x 모니터링용 recording rule입니다.
+#
+# 이름 규칙: level:metric:operation  (nifi:<metric>:<op>)
+# 그룹 이름에 "builtin"이 없으면 원본 시계열은 모두 nifi-exporter에서 옵니다.
+# *_5m 원본 메트릭은 5분 롤링 gauge(NiFi 통계 또는 Bulletin 관측 건수)이므로
+# rate()/increase()를 적용하지 않습니다.
+
+groups:
+  # ---------------------------------------------------------------------------
+  # 큐
+  # ---------------------------------------------------------------------------
+  - name: nifi-recording-queues
+    interval: 30s
+    rules:
+      # 5분·10분 동안 적체 FlowFile 수·바이트의 증가량입니다 (gauge delta).
+      - record: nifi:connection_queued_flowfiles:delta5m
+        expr: delta(nifi_connection_queued_flowfiles[5m])
+      - record: nifi:connection_queued_flowfiles:delta10m
+        expr: delta(nifi_connection_queued_flowfiles[10m])
+      - record: nifi:connection_queued_bytes:delta5m
+        expr: delta(nifi_connection_queued_bytes[5m])
+      - record: nifi:connection_queued_bytes:delta10m
+        expr: delta(nifi_connection_queued_bytes[10m])
+
+      # 큐별로 두 Backpressure 비율(개수, 데이터 크기) 중 큰 값입니다.
+      # `(a > b) or b`는 레이블이 같은 두 시계열의 원소별 최댓값을 구합니다.
+      - record: nifi:connection_percent_used:max
+        expr: |
+          (nifi_connection_percent_used_count > nifi_connection_percent_used_bytes)
+          or nifi_connection_percent_used_bytes
+
+      # 큐의 destination Processor가 Running이면 1, 아니면 0입니다.
+      # destination이 Processor가 아니면(포트, funnel, Process Group) 값이 없습니다.
+      # 연결 id는 topology collector에서 옵니다. NiFi 2.x 상태 스냅샷에는
+      # source/destination 이름만 있습니다.
+      - record: nifi:connection_destination_running
+        expr: |
+          nifi_connection_endpoints_info{destination_type="PROCESSOR"}
+          * on (cluster, destination_id) group_left ()
+          label_replace(nifi_processor_running, "destination_id", "$1", "processor_id", "(.*)")
+
+      # 사람이 읽는 이름을 붙인 표용 시계열입니다 (Grafana "NiFi / 큐" 표).
+      - record: nifi:connection_queued_flowfiles:named
+        expr: |
+          nifi_connection_queued_flowfiles
+          * on (cluster, connection_id) group_left (name, source_name, destination_name)
+          nifi_connection_info
+      - record: nifi:connection_queued_bytes:named
+        expr: |
+          nifi_connection_queued_bytes
+          * on (cluster, connection_id) group_left (name, source_name, destination_name)
+          nifi_connection_info
+      - record: nifi:connection_percent_used:named
+        expr: |
+          nifi:connection_percent_used:max
+          * on (cluster, connection_id) group_left (name, source_name, destination_name)
+          nifi_connection_info
+
+  # ---------------------------------------------------------------------------
+  # Processor
+  # ---------------------------------------------------------------------------
+  - name: nifi-recording-processors
+    interval: 30s
+    rules:
+      # 최근 5분 평균 task 시간입니다. task를 실행한 Processor만 값이 있습니다.
+      - record: nifi:processor_task_duration_avg_seconds_5m
+        expr: |
+          nifi_processor_tasks_duration_seconds_5m
+          / (nifi_processor_tasks_5m > 0)
+
+      # 클러스터 전체의 실행 상태별 Processor 수입니다 (없으면 0).
+      - record: nifi:processors:count_by_status
+        expr: sum by (cluster, status) (nifi_processor_run_status)
+
+      # 이름·타입을 붙인 표용 시계열입니다 (Grafana "NiFi / 프로세서" 표).
+      - record: nifi:processor_tasks_5m:named
+        expr: |
+          nifi_processor_tasks_5m
+          * on (cluster, processor_id) group_left (name, type)
+          nifi_processor_info
+
+  # ---------------------------------------------------------------------------
+  # Process Group
+  # ---------------------------------------------------------------------------
+  - name: nifi-recording-process-groups
+    interval: 30s
+    rules:
+      # 경로를 붙인 표용 시계열입니다 (Grafana "NiFi / 프로세스 그룹" 표).
+      - record: nifi:pg_queued_flowfiles:named
+        expr: |
+          nifi_pg_queued_flowfiles
+          * on (cluster, pg_id) group_left (pg_name, pg_path, parent_id, depth)
+          nifi_pg_info
+      - record: nifi:pg_queued_bytes:named
+        expr: |
+          nifi_pg_queued_bytes
+          * on (cluster, pg_id) group_left (pg_name, pg_path, parent_id, depth)
+          nifi_pg_info
+      - record: nifi:pg_queued_flowfiles:delta10m
+        expr: delta(nifi_pg_queued_flowfiles[10m])
+
+  # ---------------------------------------------------------------------------
+  # 클러스터 개요 (Grafana "NiFi / 개요" stat 패널)
+  # ---------------------------------------------------------------------------
+  - name: nifi-recording-overview
+    interval: 30s
+    rules:
+      # 모든 연결의 적체 합계입니다 (루트 PG의 적체값과 같습니다).
+      - record: nifi:queued_flowfiles:sum
+        expr: sum by (cluster) (nifi_connection_queued_flowfiles)
+      - record: nifi:queued_bytes:sum
+        expr: sum by (cluster) (nifi_connection_queued_bytes)
+
+      # Backpressure 임계치의 80% 초과 / 100%에 도달한 큐 수입니다 (없으면 0).
+      - record: nifi:queues_near_backpressure:count
+        expr: sum by (cluster) (nifi:connection_percent_used:max > bool 80)
+      - record: nifi:queues_backpressure_engaged:count
+        expr: sum by (cluster) (nifi:connection_percent_used:max >= bool 100)
+
+      # 클러스터 전체의 Invalid Processor 수입니다 (없으면 0).
+      - record: nifi:processors_invalid:count
+        expr: sum by (cluster) (nifi_processor_run_status{status="Invalid"})
+
+      # 최근 5분 ERROR Bulletin 관측 수이며, source별과 클러스터별로 기록합니다.
+      # 새 source의 첫 카운터 샘플은 increase()가 세지 못하므로 exporter의 윈도우
+      # gauge를 씁니다. 기존 대시보드 호환을 위해 recording rule 이름은 유지합니다.
+      - record: nifi:bulletins_error:increase5m
+        expr: sum by (cluster, pg_id, source_id) (nifi_bulletins_observed_5m{level="ERROR"})
+      - record: nifi:bulletins_error:increase5m:sum
+        expr: sum by (cluster) (nifi_bulletins_observed_5m{level="ERROR"})
+
+      # 노드별로 GC에 쓴 실제 시간의 비율입니다 (0~1).
+      - record: nifi:jvm_gc_time_ratio:rate5m
+        expr: sum by (cluster, node_id) (rate(nifi_jvm_gc_seconds_total[5m]))
+
+      # 노드별 저장소 사용률 중 가장 높은 값입니다 (content/flowfile/provenance).
+      - record: nifi:repo_utilization:max
+        expr: max by (cluster, node_id) (nifi_repo_utilization)
+
+      # 노드별 timer-driven 스레드 풀 사용률입니다 (0~1). 스레드 풀 크기는 노드마다 같은
+      # 설정값(maxTimerDrivenThreadCount)입니다. 단일 노드 NiFi에는 노드별 값이 없으므로
+      # 전체 활성 스레드로 계산하고 diagnostics와 같은 node_id="standalone"을 붙입니다.
+      - record: nifi:thread_pool_utilization
+        expr: |
+          (
+            nifi_node_active_threads
+            / on (cluster) group_left ()
+            nifi_controller_max_timer_driven_threads
+          )
+          or
+          (
+            label_replace(
+              nifi_controller_active_threads / nifi_controller_max_timer_driven_threads,
+              "node_id", "standalone", "", ""
+            )
+            and on (cluster) (nifi_cluster_clustered == 0)
+          )
+
+      # collector별 마지막 성공 이후 경과 초입니다 (exporter 수집 신선도).
+      - record: nifi:exporter_collector_age_seconds
+        expr: time() - nifi_exporter_collector_last_success_timestamp_seconds
+
+  # ---------------------------------------------------------------------------
+  # 내장 엔드포인트(job=nifi-builtin)의 노드별 값을 클러스터 수준으로 합산합니다.
+  # job을 꺼도 문제없으며, 규칙이 시계열을 만들지 않을 뿐입니다.
+  # ---------------------------------------------------------------------------
+  - name: nifi-recording-builtin
+    interval: 30s
+    rules:
+      - record: nifi:builtin_amount_items_queued:sum
+        expr: sum by (cluster, component_id, component_type) (nifi_amount_items_queued{job="nifi-builtin"})
+      - record: nifi:builtin_size_content_queued:sum
+        expr: sum by (cluster, component_id, component_type) (nifi_size_content_queued_total{job="nifi-builtin"})
+      - record: nifi:builtin_amount_items_input:sum
+        expr: sum by (cluster, component_id, component_type) (nifi_amount_items_input{job="nifi-builtin"})
+      - record: nifi:builtin_amount_items_output:sum
+        expr: sum by (cluster, component_id, component_type) (nifi_amount_items_output{job="nifi-builtin"})
+      - record: nifi:builtin_amount_threads_active:sum
+        expr: sum by (cluster, component_id, component_type) (nifi_amount_threads_active{job="nifi-builtin"})

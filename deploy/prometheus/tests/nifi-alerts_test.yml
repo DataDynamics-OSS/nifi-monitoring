@@ -1,0 +1,457 @@
+# rules/nifi-alerts.yml(과 이 규칙이 쓰는 recording rule)의 promtool 단위 테스트입니다.
+#   promtool test rules tests/nifi-alerts_test.yml   (deploy/prometheus에서 실행합니다)
+rule_files:
+  - ../rules/nifi-recording.yml
+  - ../rules/nifi-alerts.yml
+
+evaluation_interval: 30s
+
+tests:
+  # --- exporter 다운 / collector 실패 ---------------------------------------
+  - interval: 30s
+    input_series:
+      - series: 'up{job="nifi-exporter",instance="nifi-exporter:9103",cluster="c"}'
+        values: "1 1 0 0 0 0 0 0"
+      - series: 'nifi_exporter_collector_success{collector="flow",cluster="c",job="nifi-exporter",instance="nifi-exporter:9103"}'
+        values: "0 0 0 0 0 0 0 0 0"
+    alert_rule_test:
+      - alertname: NiFiExporterDown
+        eval_time: 1m
+        exp_alerts: []
+      - alertname: NiFiExporterDown
+        eval_time: 3m30s
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              component: exporter
+              job: nifi-exporter
+              instance: nifi-exporter:9103
+              cluster: c
+            exp_annotations:
+              summary: "nifi-exporter 스크레이프 실패 (nifi-exporter:9103)"
+              description: "Prometheus가 nifi-exporter에서 2분 이상 메트릭을 받지 못했습니다. 그동안 NiFi 상태 알림은 억제됩니다."
+      - alertname: NiFiCollectorFailing
+        eval_time: 3m30s
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              component: exporter
+              collector: flow
+              cluster: c
+              job: nifi-exporter
+              instance: nifi-exporter:9103
+            exp_annotations:
+              summary: "nifi-exporter flow 수집 실패"
+              description: "Exporter는 살아 있으나 NiFi API 호출이 3분 이상 실패하고 있습니다 (인증 만료, 권한, NiFi 응답 없음). 해당 Collector의 메트릭은 노출되지 않습니다."
+
+  # --- 클러스터 ---------------------------------------------------------------
+  - interval: 30s
+    input_series:
+      - series: 'nifi_node_connected{cluster="c",node_id="n1"}'
+        values: "1x10"
+      - series: 'nifi_node_connected{cluster="c",node_id="n2"}'
+        values: "0x10"
+      - series: 'nifi_cluster_nodes_total{cluster="c"}'
+        values: "3x10"
+      - series: 'nifi_cluster_nodes_connected{cluster="c"}'
+        values: "1x10"
+    alert_rule_test:
+      - alertname: NiFiNodeDisconnected
+        eval_time: 3m
+        exp_alerts:
+          - exp_labels: { severity: critical, component: node, cluster: c, node_id: n2 }
+            exp_annotations:
+              summary: "NiFi 노드 연결 해제: n2"
+              description: "노드가 2분 이상 CONNECTED 상태가 아닙니다. nifi_node_status 로 현재 상태(DISCONNECTED/OFFLOADED 등)를 확인하세요."
+      - alertname: NiFiClusterQuorumLost
+        eval_time: 2m
+        exp_alerts:
+          - exp_labels: { severity: critical, component: cluster, cluster: c }
+            exp_annotations:
+              summary: "NiFi 연결 노드 수가 과반 미만 (c)"
+              description: "연결 노드 1개. 클러스터 전체 처리 중단 위험."
+
+  # --- 큐: 이름이 붙은 80% 초과, 발동, 증가 ---------------------------------
+  - interval: 30s
+    input_series:
+      - series: 'nifi_connection_percent_used_count{cluster="c",connection_id="q1",pg_id="pg"}'
+        values: "85x30"
+      - series: 'nifi_connection_percent_used_bytes{cluster="c",connection_id="q1",pg_id="pg"}'
+        values: "10x30"
+      - series: 'nifi_connection_percent_used_count{cluster="c",connection_id="q2",pg_id="pg"}'
+        values: "100x30"
+      - series: 'nifi_connection_percent_used_bytes{cluster="c",connection_id="q2",pg_id="pg"}'
+        values: "100x30"
+      - series: 'nifi_connection_info{cluster="c",connection_id="q1",pg_id="pg",name="success",source_name="Gen",destination_name="Put"}'
+        values: "1x30"
+      - series: 'nifi_connection_info{cluster="c",connection_id="q2",pg_id="pg",name="failure",source_name="Gen",destination_name="Log"}'
+        values: "1x30"
+      - series: 'nifi_connection_queued_flowfiles{cluster="c",connection_id="q1",pg_id="pg"}'
+        values: "0+200x30"
+    alert_rule_test:
+      - alertname: NiFiQueueNearBackpressure
+        eval_time: 6m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: queue
+              cluster: c
+              connection_id: q1
+              pg_id: pg
+              name: success
+              source_name: Gen
+              destination_name: Put
+            exp_annotations:
+              summary: "큐 Backpressure 한도 80% 초과: Gen → Put (success)"
+              description: "connection q1 사용률 85%. destination 처리량·스레드·Bulletin을 확인하세요."
+          - exp_labels:
+              severity: warning
+              component: queue
+              cluster: c
+              connection_id: q2
+              pg_id: pg
+              name: failure
+              source_name: Gen
+              destination_name: Log
+            exp_annotations:
+              summary: "큐 Backpressure 한도 80% 초과: Gen → Log (failure)"
+              description: "connection q2 사용률 100%. destination 처리량·스레드·Bulletin을 확인하세요."
+      - alertname: NiFiQueueBackpressureEngaged
+        eval_time: 6m
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              component: queue
+              cluster: c
+              connection_id: q2
+              pg_id: pg
+              name: failure
+              source_name: Gen
+              destination_name: Log
+            exp_annotations:
+              summary: "큐 Backpressure 발동: Gen → Log (failure)"
+              description: "connection q2 가 한도에 도달해 상류 Processor가 정지됩니다."
+      - alertname: NiFiQueueGrowing
+        eval_time: 15m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: queue
+              cluster: c
+              connection_id: q1
+              pg_id: pg
+              name: success
+              source_name: Gen
+              destination_name: Put
+            exp_annotations:
+              summary: "큐 10분간 1,000개 이상 증가: Gen → Put (success)"
+              description: "connection q1 10분 증가량 4k개."
+
+  # --- 한 클러스터에 exporter 2개 스크레이프 ---------------------------------
+  - interval: 30s
+    input_series:
+      - series: 'up{job="nifi-exporter",instance="a:9103",cluster="c"}'
+        values: "1x10"
+      - series: 'up{job="nifi-exporter",instance="b:9103",cluster="c"}'
+        values: "1x10"
+      - series: 'up{job="nifi-exporter",instance="x:9103",cluster="other"}'
+        values: "1x10"
+    alert_rule_test:
+      - alertname: NiFiExporterDuplicate
+        eval_time: 3m
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              component: exporter
+              cluster: c
+            exp_annotations:
+              summary: "nifi-exporter 중복 스크레이프 (c: 2개)"
+              description: "한 클러스터에 exporter가 2개 이상 스크레이프되고 있습니다. info 메트릭 조인이 실패해 큐·Processor·Bulletin 알림이 동작하지 않습니다. exporter를 1개만 남기세요."
+
+  # --- keep_firing_for: 시계열이 사라져도(exporter 다운) 알림은 5분 유지됩니다 --
+  # 0분부터 Invalid이고 10분 30초에 stale 마커가 옵니다(스크레이프 실패와 같습니다).
+  # 13분에는 아직 firing이고(keep_firing_for 안), 17분에는 해소됩니다.
+  - interval: 30s
+    input_series:
+      - series: 'nifi_processor_run_status{cluster="c",processor_id="p1",pg_id="pg",status="Invalid"}'
+        values: "1x20 stale"
+      - series: 'nifi_processor_info{cluster="c",processor_id="p1",pg_id="pg",name="Broken",type="UpdateAttribute",execution_node="ALL"}'
+        values: "1x20 stale"
+    alert_rule_test:
+      - alertname: NiFiProcessorInvalid
+        eval_time: 13m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: processor
+              cluster: c
+              processor_id: p1
+              pg_id: pg
+              status: Invalid
+              name: Broken
+              type: UpdateAttribute
+            exp_annotations:
+              summary: "Processor Invalid: Broken (UpdateAttribute)"
+              description: "processor p1 (PG pg) 가 5분 이상 Invalid 상태입니다. 속성/컨트롤러 서비스 설정을 확인하세요."
+      - alertname: NiFiProcessorInvalid
+        eval_time: 17m
+        exp_alerts: []
+
+  # --- flow 응답 크기 --------------------------------------------------------
+  - interval: 1m
+    input_series:
+      - series: 'nifi_exporter_api_response_bytes{endpoint="flow_status_recursive",cluster="c",job="nifi-exporter",instance="x"}'
+        values: "12000000x40"
+      - series: 'nifi_exporter_api_response_bytes{endpoint="system_diagnostics",cluster="c",job="nifi-exporter",instance="x"}'
+        values: "20000000x40"
+    alert_rule_test:
+      - alertname: NiFiExporterFlowResponseLarge
+        eval_time: 35m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: exporter
+              endpoint: flow_status_recursive
+              cluster: c
+              job: nifi-exporter
+              instance: x
+            exp_annotations:
+              summary: "flow 상태 응답이 10MB 초과 (c)"
+              description: "recursive status 응답 11.44MiB. collectors.flow.interval을 60s로 올리거나 exclude_pg_ids를 검토하세요."
+
+  # --- collector stale 판정은 collector 주기에 비례합니다 ----------------------
+  # flow(30s)는 최소값 180초 뒤 stale입니다. topology(300s)는 10분에도 stale이 아닙니다.
+  - interval: 30s
+    input_series:
+      - series: 'nifi_exporter_collector_last_success_timestamp_seconds{collector="flow",cluster="c",job="nifi-exporter",instance="x"}'
+        values: "0x40"
+      - series: 'nifi_exporter_collector_interval_seconds{collector="flow",cluster="c",job="nifi-exporter",instance="x"}'
+        values: "30x40"
+      - series: 'nifi_exporter_collector_last_success_timestamp_seconds{collector="topology",cluster="c",job="nifi-exporter",instance="x"}'
+        values: "0x40"
+      - series: 'nifi_exporter_collector_interval_seconds{collector="topology",cluster="c",job="nifi-exporter",instance="x"}'
+        values: "300x40"
+    alert_rule_test:
+      - alertname: NiFiCollectorStale
+        eval_time: 2m
+        exp_alerts: []
+      - alertname: NiFiCollectorStale
+        eval_time: 10m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: exporter
+              collector: flow
+              cluster: c
+              job: nifi-exporter
+              instance: x
+            exp_annotations:
+              summary: "nifi-exporter flow 수집 지연 (주기의 3배 경과)"
+              description: "마지막 성공 수집으로부터 10m 0s 지났습니다."
+
+  # --- 큐 정체는 destination Processor가 Running일 때만 판정합니다 -------------
+  - interval: 30s
+    input_series:
+      - series: 'nifi_connection_queued_flowfiles{cluster="c",connection_id="q1",pg_id="pg"}'
+        values: "500x30"
+      - series: 'nifi_connection_flowfiles_out_5m{cluster="c",connection_id="q1",pg_id="pg"}'
+        values: "0x30"
+      - series: 'nifi_connection_queued_flowfiles{cluster="c",connection_id="q2",pg_id="pg"}'
+        values: "500x30"
+      - series: 'nifi_connection_flowfiles_out_5m{cluster="c",connection_id="q2",pg_id="pg"}'
+        values: "0x30"
+      - series: 'nifi_connection_info{cluster="c",connection_id="q1",pg_id="pg",name="success",source_name="Gen",destination_name="Put"}'
+        values: "1x30"
+      - series: 'nifi_connection_info{cluster="c",connection_id="q2",pg_id="pg",name="stopped",source_name="Gen",destination_name="Log"}'
+        values: "1x30"
+      - series: 'nifi_connection_endpoints_info{cluster="c",connection_id="q1",pg_id="pg",source_id="p0",destination_id="p1",source_type="PROCESSOR",source_group_id="pg",destination_type="PROCESSOR",destination_group_id="pg"}'
+        values: "1x30"
+      - series: 'nifi_connection_endpoints_info{cluster="c",connection_id="q2",pg_id="pg",source_id="p0",destination_id="p2",source_type="PROCESSOR",source_group_id="pg",destination_type="PROCESSOR",destination_group_id="pg"}'
+        values: "1x30"
+      - series: 'nifi_processor_running{cluster="c",processor_id="p1",pg_id="pg"}'
+        values: "1x30"
+      - series: 'nifi_processor_running{cluster="c",processor_id="p2",pg_id="pg"}'
+        values: "0x30"
+    alert_rule_test:
+      - alertname: NiFiQueueStalled
+        eval_time: 12m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: queue
+              cluster: c
+              connection_id: q1
+              pg_id: pg
+              name: success
+              source_name: Gen
+              destination_name: Put
+            exp_annotations:
+              summary: "큐 정체(소비 0): Gen → Put (success)"
+              description: "destination 이 Running 인데 10분간 FlowFile 소비가 없습니다. 적체 500개. destination 의 Bulletin/스레드를 확인하세요."
+
+  # --- 이름 조인이 붙은 Processor·Bulletin 알림 ------------------------------
+  - interval: 30s
+    input_series:
+      - series: 'nifi_processor_run_status{cluster="c",processor_id="p1",pg_id="pg",status="Invalid"}'
+        values: "1x20"
+      - series: 'nifi_processor_run_status{cluster="c",processor_id="p1",pg_id="pg",status="Running"}'
+        values: "0x20"
+      - series: 'nifi_processor_info{cluster="c",processor_id="p1",pg_id="pg",name="Broken",type="UpdateAttribute",execution_node="ALL"}'
+        values: "1x20"
+      - series: 'nifi_bulletins_observed_5m{cluster="c",level="ERROR",pg_id="pg",source_id="p1",source_type="PROCESSOR"}'
+        values: "30x20"
+      - series: 'nifi_bulletins_observed_5m{cluster="c",level="ERROR",pg_id="pg",source_id="cs1",source_type="CONTROLLER_SERVICE"}'
+        values: "30x20"
+      - series: 'nifi_bulletins_observed_5m{cluster="c",level="ERROR",pg_id="",source_id="",source_type="FLOW_CONTROLLER"}'
+        values: "30x20"
+    alert_rule_test:
+      - alertname: NiFiProcessorInvalid
+        eval_time: 6m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: processor
+              cluster: c
+              processor_id: p1
+              pg_id: pg
+              status: Invalid
+              name: Broken
+              type: UpdateAttribute
+            exp_annotations:
+              summary: "Processor Invalid: Broken (UpdateAttribute)"
+              description: "processor p1 (PG pg) 가 5분 이상 Invalid 상태입니다. 속성/컨트롤러 서비스 설정을 확인하세요."
+      - alertname: NiFiBulletinErrors
+        eval_time: 10m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: bulletin
+              cluster: c
+              pg_id: pg
+              source_id: p1
+              name: Broken
+              type: UpdateAttribute
+            exp_annotations:
+              summary: "ERROR Bulletin 5분간 10건 초과: Broken (UpdateAttribute)"
+              description: "source p1 (PG pg) 에서 5분간 ERROR 30건."
+          - exp_labels:
+              severity: warning
+              component: bulletin
+              cluster: c
+              pg_id: pg
+              source_id: cs1
+            exp_annotations:
+              summary: "ERROR Bulletin 5분간 10건 초과: source cs1"
+              description: "source cs1 (PG pg) 에서 5분간 ERROR 30건."
+          # 빈 pg_id/source_id 레이블은 Prometheus가 제거합니다
+          - exp_labels:
+              severity: warning
+              component: bulletin
+              cluster: c
+            exp_annotations:
+              summary: "ERROR Bulletin 5분간 10건 초과: source controller"
+              description: "source controller 에서 5분간 ERROR 30건."
+
+  # --- 스레드 풀 포화: 90% 이상 10분 ---------------------------------------------
+  - interval: 1m
+    input_series:
+      - series: 'nifi_node_active_threads{cluster="c",node_id="n1",job="nifi-exporter",instance="x"}'
+        values: "10x20"
+      - series: 'nifi_node_active_threads{cluster="c",node_id="n2",job="nifi-exporter",instance="x"}'
+        values: "5x20"
+      - series: 'nifi_controller_max_timer_driven_threads{cluster="c",job="nifi-exporter",instance="x"}'
+        values: "10x20"
+    alert_rule_test:
+      - alertname: NiFiThreadPoolSaturated
+        eval_time: 5m
+        exp_alerts: []
+      - alertname: NiFiThreadPoolSaturated
+        eval_time: 15m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: jvm
+              cluster: c
+              node_id: n1
+              job: nifi-exporter
+              instance: x
+            exp_annotations:
+              summary: "NiFi 스레드 풀 포화: n1"
+              description: "timer-driven 스레드 풀 사용률 100% (10분 이상). Processor가 스레드를 기다리느라 처리가 밀립니다. 오래 걸리는 Task와 maxTimerDrivenThreadCount를 확인하세요."
+
+  # --- 알림 중계 -------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      - series: 'up{job="nifi-alert-relay",instance="nifi-alert-relay:9105"}'
+        values: "1 1 0 0 0 0 0 0 0"
+      - series: 'nifi_alert_relay_deliveries_total{job="nifi-alert-relay",instance="nifi-alert-relay:9105",target="ops-api",result="failed"}'
+        values: "0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"
+    alert_rule_test:
+      - alertname: NiFiAlertRelayDown
+        eval_time: 5m
+        exp_alerts: []
+      - alertname: NiFiAlertRelayDown
+        eval_time: 8m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: relay
+              job: nifi-alert-relay
+              instance: nifi-alert-relay:9105
+            exp_annotations:
+              summary: "nifi-alert-relay 스크레이프 실패 (nifi-alert-relay:9105)"
+              description: "사용자 정의 HTTP 수신처로 알림이 전달되지 않습니다. Slack 등 다른 수신처는 영향이 없습니다."
+      - alertname: NiFiAlertRelayFailing
+        eval_time: 2m
+        exp_alerts: []
+      - alertname: NiFiAlertRelayFailing
+        eval_time: 5m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              component: relay
+              job: nifi-alert-relay
+              instance: nifi-alert-relay:9105
+              target: ops-api
+              result: failed
+            exp_annotations:
+              summary: "알림 중계 실패: 대상 ops-api"
+              description: "최근 15분 동안 ops-api 대상으로 1건 전송에 실패했습니다. nifi-alert-relay 로그의 HTTP 응답을 확인하세요."
+      - alertname: NiFiAlertRelayFailing
+        eval_time: 20m
+        exp_alerts: []
+
+  # 짝수 노드의 정확히 절반은 과반 확보가 아닙니다. 정상 과반은 발화하지 않습니다.
+  - interval: 30s
+    input_series:
+      - series: 'nifi_cluster_nodes_total{cluster="even-two"}'
+        values: "2x10"
+      - series: 'nifi_cluster_nodes_connected{cluster="even-two"}'
+        values: "1x10"
+      - series: 'nifi_cluster_nodes_total{cluster="even-four"}'
+        values: "4x10"
+      - series: 'nifi_cluster_nodes_connected{cluster="even-four"}'
+        values: "2x10"
+      - series: 'nifi_cluster_nodes_total{cluster="even-healthy"}'
+        values: "4x10"
+      - series: 'nifi_cluster_nodes_connected{cluster="even-healthy"}'
+        values: "3x10"
+      - series: 'nifi_cluster_nodes_total{cluster="odd-healthy"}'
+        values: "3x10"
+      - series: 'nifi_cluster_nodes_connected{cluster="odd-healthy"}'
+        values: "2x10"
+    alert_rule_test:
+      - alertname: NiFiClusterQuorumLost
+        eval_time: 30s
+        exp_alerts: []
+      - alertname: NiFiClusterQuorumLost
+        eval_time: 2m
+        exp_alerts:
+          - exp_labels: {severity: critical, component: cluster, cluster: even-two}
+            exp_annotations:
+              summary: "NiFi 연결 노드 수가 과반 미만 (even-two)"
+              description: "연결 노드 1개. 클러스터 전체 처리 중단 위험."
+          - exp_labels: {severity: critical, component: cluster, cluster: even-four}
+            exp_annotations:
+              summary: "NiFi 연결 노드 수가 과반 미만 (even-four)"
+              description: "연결 노드 2개. 클러스터 전체 처리 중단 위험."

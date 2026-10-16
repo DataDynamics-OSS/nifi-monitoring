@@ -1,0 +1,106 @@
+{
+  "root": {
+    "processGroupFlow": {
+      "id": "root-id",
+      "parentGroupId": null,
+      "flow": {
+        "processGroups": [
+          {
+            "id": "pg-ingest"
+          },
+          {
+            "id": "pg-excluded"
+          }
+        ],
+        "processors": [],
+        "connections": [],
+        "inputPorts": [],
+        "outputPorts": [],
+        "remoteProcessGroups": [],
+        "funnels": [],
+        "labels": []
+      }
+    }
+  },
+  "pg-ingest": {
+    "processGroupFlow": {
+      "id": "pg-ingest",
+      "parentGroupId": "root-id",
+      "flow": {
+        "processGroups": [
+          {
+            "id": "pg-deep"
+          }
+        ],
+        "processors": [],
+        "connections": [
+          {
+            "id": "conn-1",
+            "sourceId": "port-in",
+            "sourceType": "INPUT_PORT",
+            "sourceGroupId": "pg-ingest",
+            "destinationId": "proc-put",
+            "destinationType": "PROCESSOR",
+            "destinationGroupId": "pg-ingest",
+            "component": {
+              "id": "conn-1",
+              "parentGroupId": "pg-ingest",
+              "name": "success",
+              "backPressureObjectThreshold": 10000,
+              "backPressureDataSizeThreshold": "1 GB"
+            }
+          },
+          {
+            "id": "conn-2",
+            "sourceId": "proc-put",
+            "sourceType": "PROCESSOR",
+            "sourceGroupId": "pg-ingest",
+            "destinationId": "port-out",
+            "destinationType": "OUTPUT_PORT",
+            "destinationGroupId": "pg-ingest",
+            "permissions": {
+              "canRead": false
+            }
+          }
+        ],
+        "inputPorts": [],
+        "outputPorts": [],
+        "remoteProcessGroups": [],
+        "funnels": [],
+        "labels": []
+      }
+    }
+  },
+  "pg-deep": {
+    "processGroupFlow": {
+      "id": "pg-deep",
+      "parentGroupId": "pg-ingest",
+      "flow": {
+        "processGroups": [],
+        "processors": [],
+        "connections": [],
+        "inputPorts": [],
+        "outputPorts": [],
+        "remoteProcessGroups": [],
+        "funnels": [],
+        "labels": []
+      }
+    }
+  },
+  "pg-excluded": {
+    "processGroupFlow": {
+      "id": "pg-excluded",
+      "parentGroupId": "root-id",
+      "flow": {
+        "processGroups": [],
+        "processors": [],
+        "connections": [],
+        "inputPorts": [],
+        "outputPorts": [],
+        "remoteProcessGroups": [],
+        "funnels": [],
+        "labels": []
+      }
+    }
+  }
+}

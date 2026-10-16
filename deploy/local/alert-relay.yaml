@@ -1,0 +1,29 @@
+# 로컬 스택용 nifi-alert-relay 설정입니다. 대상은 시험용 수신처(alert-sink)입니다.
+listen: 0.0.0.0:9105
+log_format: json
+basic_auth:
+  username: alertmanager
+  password_file: /certs/alert-relay-password
+dedupe_window: 5m
+targets:
+  # critical 알림을 하나씩, 템플릿 본문으로 보냅니다
+  - name: sink-critical
+    url: http://alert-sink:8080/critical
+    headers: { X-Token: local-test }
+    mode: alert
+    match: { severity: [critical] }
+    payload:
+      title: "[{status}] {alertname} ({cluster})"
+      message: "{summary}"
+      severity: "{severity}"
+      occurredAt: "{startsAt}"
+      tags: "{labels}"
+  # 모든 통지를 Alertmanager 본문 그대로 보냅니다
+  - name: sink-raw
+    url: http://alert-sink:8080/raw
+    mode: group
+  # 항상 503을 돌려주는 대상입니다(재시도·실패 알림 시험용). 평소에는 끕니다
+  # - name: sink-fail
+  #   url: http://alert-sink:8080/fail
+  #   retries: 1
+  #   retry_backoff: 1s

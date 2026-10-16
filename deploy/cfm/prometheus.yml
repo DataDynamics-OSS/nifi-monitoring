@@ -1,0 +1,43 @@
+# CFM 4.12.0 SP1 클러스터용 Prometheus 설정입니다(../prometheus/prometheus.yml의 CFM 실값판).
+#
+# 운영 설정과 다른 점:
+# - nifi-builtin job이 없습니다. CFM 주소는 요청마다 두 노드를 번갈아 응답하는 로드밸런서이고,
+#   노드 호스트명은 모니터링 호스트에서 해석되지 않습니다. 노드별 내장 엔드포인트는 노드를
+#   하나씩 직접 스크레이프해야 하므로 쓸 수 없습니다. 클러스터 집계값은 exporter가 줍니다.
+# - TLS·인증이 없어 인증서 경로가 없습니다.
+# - 이 디렉터리의 docker-compose.yml에서는 exporter /metrics를 내부 망에서만 스크레이프하므로
+#   basic auth를 쓰지 않습니다. 다른 망에 노출하면 exporter의 server.basic_auth와 아래
+#   basic_auth를 함께 켭니다(/metrics에 큐·Processor 이름이 있습니다).
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    monitor: nifi-monitoring-cfm
+
+rule_files:
+  - /etc/prometheus/rules/nifi-recording.yml
+  - /etc/prometheus/rules/nifi-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        # 운영 Alertmanager 주소로 바꿉니다. 수신 채널 실값은 체크리스트 5.18입니다
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: nifi-exporter
+    scrape_interval: 15s
+    metrics_path: /metrics
+    # exporter의 nifi.cluster_name(cfm)과 같아야 합니다. honor_labels로 exporter의 cluster
+    # 레이블을 그대로 씁니다
+    honor_labels: true
+    static_configs:
+      - targets: ["nifi-exporter:9103"]
+        labels:
+          cluster: cfm

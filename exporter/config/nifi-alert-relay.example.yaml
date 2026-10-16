@@ -1,0 +1,54 @@
+# nifi-alert-relay 설정 예시입니다. Alertmanager의 webhook 수신처(custom-relay)가 보낸 통지를
+# 아래 대상(target)마다 다시 보냅니다. 값의 ${ENV}는 시작할 때 환경변수로 바꿉니다.
+listen: 0.0.0.0:9105
+log_format: json
+# 로그 파일입니다. 없으면 stdout으로 씁니다. 상대 경로는 실행 디렉토리 기준입니다
+# log_file: /var/log/nifi-alert-relay/nifi-alert-relay.log
+# log_max_size: 50MB
+# log_backups: 5
+# Alertmanager와 Prometheus가 이 계정으로 부릅니다(/alerts, /metrics). /healthz는 열려 있습니다.
+basic_auth:
+  username: alertmanager
+  password_file: /etc/nifi-alert-relay/password   # 또는 NIFI_ALERT_RELAY_PASSWORD
+# 대상 하나가 실패해 Alertmanager가 통지를 다시 보낼 때, 이미 성공한 대상에 다시 보내지
+# 않는 기간입니다. Alertmanager의 repeat_interval보다 짧게 둡니다.
+# 같은 프로세스에서 전송 중인 동일 키는 502로 재시도를 요청하며 중복 전송하지 않습니다.
+dedupe_window: 5m
+
+targets:
+  # 알림 하나에 요청 하나. payload의 문자열 값에서 {필드}를 채웁니다.
+  # 필드: status, alertname, severity, cluster, summary, description, startsAt, endsAt,
+  #       generatorURL, fingerprint, receiver, externalURL, labels[이름], annotations[이름]
+  # 값이 정확히 {labels}, {annotations}, {alert}이면 객체를 그대로 넣습니다.
+  - name: ops-api
+    url: https://ops.example.com/api/v1/events
+    method: POST
+    headers:
+      Authorization: "Bearer ${OPS_API_TOKEN}"
+    mode: alert
+    match:
+      severity: [critical]          # 레이블 또는 status. 목록 중 하나와 같아야 합니다
+    send_resolved: true
+    timeout: 10s
+    retries: 2                      # 5xx·429·연결 오류만 재시도합니다(4xx는 바로 실패)
+    retry_backoff: 2s
+    payload:
+      source: nifi
+      title: "[{status}] {alertname} ({cluster})"
+      message: "{summary}"
+      detail: "{description}"
+      severity: "{severity}"
+      occurredAt: "{startsAt}"
+      link: "{generatorURL}"
+      tags: "{labels}"
+    # tls: { ca_file: /etc/nifi-alert-relay/ca.pem }   # 사설 CA, mTLS면 cert_file/key_file
+
+  # Alertmanager 통지 하나에 요청 하나. payload를 생략하면 Alertmanager 본문 형식으로 보냅니다.
+  # alerts를 필터링하고 status·공통 레이블·annotation을 다시 계산합니다.
+  # group 모드 필드: status, count, firing, resolved,
+  # groupKey, labels[이름](= commonLabels), {alerts}, {groupLabels}, {commonLabels}
+  - name: ticket-webhook
+    url: http://ticket.example.com/hooks/nifi
+    mode: group
+    match:
+      status: [firing]

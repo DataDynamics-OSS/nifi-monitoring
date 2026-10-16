@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  exporter:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: exporter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: lint
+        run: |
+          ruff check src tests ../deploy/local ../deploy/grafana ../docs/diagrams
+          ruff format --check src tests ../deploy/local ../deploy/grafana ../docs/diagrams
+      # tests/test_tls.py는 openssl이 필요합니다
+      - run: pytest -q
+      - run: docker build -t nifi-exporter:ci .
+      - name: script distribution (bin/ config/ logs/ src/ lib/)
+        run: ./build-dist.sh && ./smoke-test.sh
+
+  prometheus:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: promtool check and test
+        working-directory: deploy/prometheus
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w --entrypoint sh prom/prometheus:v2.53.4 -c '
+            promtool check config --syntax-only prometheus.yml &&
+            promtool check rules rules/*.yml &&
+            promtool test rules tests/*_test.yml'
+      - name: local stack prometheus config
+        working-directory: deploy/local
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w --entrypoint promtool prom/prometheus:v2.53.4 \
+            check config --syntax-only prometheus.yml
+      - name: cfm prometheus config
+        working-directory: deploy/cfm
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w --entrypoint promtool prom/prometheus:v2.53.4 \
+            check config --syntax-only prometheus.yml
+
+  grafana:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: generated dashboards are up to date
+        run: python3 deploy/grafana/build_dashboards.py --check
+
+  alertmanager:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: amtool check-config
+        working-directory: deploy/alertmanager
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w --entrypoint amtool prom/alertmanager:v0.28.1 \
+            check-config alertmanager.yml

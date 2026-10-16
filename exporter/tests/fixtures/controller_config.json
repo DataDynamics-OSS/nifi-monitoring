@@ -1,0 +1,2 @@
+{"revision": {"version": 0}, "permissions": {"canRead": true, "canWrite": false},
+ "component": {"maxTimerDrivenThreadCount": 10}}

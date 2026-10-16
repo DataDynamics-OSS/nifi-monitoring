@@ -1,0 +1,14 @@
+# 로컬 스택용 nifi-provenance-query 설정입니다 (/etc/nifi-exporter/config.yaml로 마운트합니다).
+# 계정 CN=nifi-provenance는 seed.py가 /provenance 읽기와 Provenance 보기 권한을 줍니다.
+nifi:
+  base_url: https://nifi-1:8443
+  cluster_name: local
+  tls: { ca_file: /certs/ca.pem }
+  auth: { mode: mtls, cert_file: /certs/nifi-provenance.pem, key_file: /certs/nifi-provenance.key }
+server:
+  log_format: json
+provenance:
+  listen: 0.0.0.0:9104
+  max_range: 1h
+  default_window: 5m
+  max_results: 1000

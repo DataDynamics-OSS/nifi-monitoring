@@ -1,0 +1,10 @@
+# deploy/grafana/dashboards/*.json(build_dashboards.py가 생성)을 불러옵니다.
+apiVersion: 1
+providers:
+  - name: nifi
+    folder: NiFi
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false   # 대시보드는 코드입니다. 대신 build_dashboards.py를 고칩니다
+    options:
+      path: /var/lib/grafana/dashboards/nifi

@@ -1,0 +1,18 @@
+{
+  "cluster": {
+    "nodes": [
+      {
+        "nodeId": "node-1-id", "address": "nifi-1", "apiPort": 8443, "status": "CONNECTED",
+        "heartbeat": "10/15/2026 01:00:00 UTC", "roles": ["Cluster Coordinator", "Primary Node"],
+        "activeThreadCount": 3, "queued": "1,200 / 3.5 MB", "events": [],
+        "nodeStartTime": "10/14/2026 23:00:00 UTC", "flowFilesQueued": 1200, "bytesQueued": 3670100
+      },
+      {
+        "nodeId": "node-2-id", "address": "nifi-2", "apiPort": 8443, "status": "DISCONNECTED",
+        "heartbeat": "10/15/2026 00:50:00 UTC", "roles": [],
+        "activeThreadCount": 0, "queued": "0 / 0 bytes", "events": []
+      }
+    ],
+    "generated": "01:00:05 UTC"
+  }
+}

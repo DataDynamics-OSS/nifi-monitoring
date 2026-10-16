@@ -1,0 +1,3 @@
+{"controllerStatus": {"activeThreadCount": 7, "terminatedThreadCount": 1, "queued": "190 (750 MB)",
+ "flowFilesQueued": 190, "bytesQueued": 786432000, "runningCount": 2, "stoppedCount": 0,
+ "invalidCount": 1, "disabledCount": 0}}

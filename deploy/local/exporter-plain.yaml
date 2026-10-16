@@ -1,0 +1,11 @@
+# TLS·인증 없는 단일 노드 NiFi(compose 프로필 "plain")용 exporter 설정입니다.
+# HTTP 주소에는 auth.mode: none만 쓸 수 있습니다. cluster collector는 단일 노드를 스스로
+# 알아보고(nifi_cluster_clustered 0) 실패로 보고하지 않습니다.
+nifi:
+  base_url: http://nifi-plain:8080
+  cluster_name: plain
+  timezone: UTC
+  auth: { mode: none }
+server:
+  listen: 0.0.0.0:9103
+  log_format: json

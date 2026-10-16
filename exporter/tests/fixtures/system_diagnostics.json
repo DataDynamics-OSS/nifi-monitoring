@@ -1,0 +1,107 @@
+{
+  "systemDiagnostics": {
+    "aggregateSnapshot": {
+      "usedHeapBytes": 3000000000,
+      "maxHeapBytes": 8000000000,
+      "heapUtilization": "37.0%",
+      "usedNonHeapBytes": 400000000,
+      "totalThreads": 300,
+      "daemonThreads": 250,
+      "availableProcessors": 16,
+      "processorLoadAverage": 2.5,
+      "garbageCollection": [
+        {
+          "name": "G1 Young Generation",
+          "collectionCount": 2000,
+          "collectionMillis": 30000
+        }
+      ],
+      "flowFileRepositoryStorageUsage": {
+        "identifier": "default",
+        "usedSpaceBytes": 1000,
+        "totalSpaceBytes": 10000,
+        "freeSpaceBytes": 9000
+      },
+      "contentRepositoryStorageUsage": [],
+      "provenanceRepositoryStorageUsage": []
+    },
+    "nodeSnapshots": [
+      {
+        "nodeId": "node-1-id",
+        "address": "nifi-1",
+        "apiPort": 8443,
+        "snapshot": {
+          "usedHeapBytes": 2000000000,
+          "maxHeapBytes": 4000000000,
+          "heapUtilization": "50.0%",
+          "usedNonHeapBytes": 200000000,
+          "totalThreads": 150,
+          "daemonThreads": 120,
+          "availableProcessors": 8,
+          "processorLoadAverage": 1.25,
+          "garbageCollection": [
+            {
+              "name": "G1 Young Generation",
+              "collectionCount": 1200,
+              "collectionTime": "00:00:18.000",
+              "collectionMillis": 18000
+            },
+            {
+              "name": "G1 Old Generation",
+              "collectionCount": 3,
+              "collectionTime": "00:00:01.500",
+              "collectionMillis": 1500
+            }
+          ],
+          "flowFileRepositoryStorageUsage": {
+            "identifier": "default",
+            "freeSpace": "90 GB",
+            "totalSpace": "100 GB",
+            "usedSpace": "10 GB",
+            "freeSpaceBytes": 90000000000,
+            "totalSpaceBytes": 100000000000,
+            "usedSpaceBytes": 10000000000,
+            "utilization": "10.0%"
+          },
+          "contentRepositoryStorageUsage": [
+            {
+              "identifier": "default",
+              "freeSpaceBytes": 50000000000,
+              "totalSpaceBytes": 500000000000,
+              "usedSpaceBytes": 450000000000,
+              "utilization": "90.0%"
+            }
+          ],
+          "provenanceRepositoryStorageUsage": [
+            {
+              "identifier": "default",
+              "freeSpaceBytes": 80000000000,
+              "totalSpaceBytes": 100000000000,
+              "usedSpaceBytes": 20000000000,
+              "utilization": "20.0%"
+            }
+          ],
+          "totalHeapBytes": 3000000000,
+          "totalNonHeapBytes": 300000000,
+          "uptime": "26:01:02.500"
+        }
+      },
+      {
+        "nodeId": "node-2-id",
+        "address": "nifi-2",
+        "apiPort": 8443,
+        "snapshot": {
+          "usedHeapBytes": 1000000000,
+          "maxHeapBytes": 4000000000,
+          "totalThreads": 150,
+          "daemonThreads": 130,
+          "availableProcessors": 8,
+          "processorLoadAverage": 1.0,
+          "garbageCollection": [],
+          "contentRepositoryStorageUsage": [],
+          "provenanceRepositoryStorageUsage": []
+        }
+      }
+    ]
+  }
+}

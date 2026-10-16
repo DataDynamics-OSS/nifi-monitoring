@@ -1,0 +1,29 @@
+# nifi-provenance-query 설정입니다(bin/start.sh provenance). Grafana 장애 분석 대시보드의
+# 링크가 이 서비스를 부릅니다. /provenance 권한이 있는 별도 계정을 씁니다.
+# nifi 절의 전체 옵션은 nifi-exporter.yaml과 같습니다. 상대 경로는 이 배포 디렉토리 기준입니다.
+nifi:
+  base_url: https://nifi.example.com:8443
+  cluster_name: prod-nifi
+  timezone: Asia/Seoul
+  tls:
+    ca_file: config/secrets/ca.pem
+  auth:
+    mode: bearer                 # bearer | mtls | none 중 하나입니다
+    username: nifi-provenance
+    password_file: config/secrets/provenance-password
+
+server:
+  log_level: INFO
+  log_format: json
+  log_file: logs/nifi-provenance-query.log
+  log_max_size: 50MB
+  log_backups: 5
+
+provenance:
+  listen: 0.0.0.0:9104
+  max_range: 1h          # 넘으면 끝 시각 기준으로 줄입니다
+  default_window: 5m     # at만 받으면 [at - window, at]을 조회합니다
+  max_results: 1000
+  query_timeout: 60s
+  poll_interval: 1s
+  max_concurrent: 2      # 넘으면 429로 거절합니다

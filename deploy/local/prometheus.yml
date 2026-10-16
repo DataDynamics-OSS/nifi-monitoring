@@ -1,0 +1,66 @@
+# ../prometheus/prometheus.yml을 로컬 대상·경로로 바꾼 사본입니다.
+# 규칙은 운영 파일을 ../prometheus/rules에서 그대로 마운트합니다.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    monitor: nifi-monitoring-local
+
+rule_files:
+  - /etc/prometheus/rules/nifi-recording.yml
+  - /etc/prometheus/rules/nifi-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: nifi-exporter
+    scrape_interval: 15s
+    honor_labels: true
+    basic_auth:
+      username: prometheus
+      password_file: /certs/metrics-password
+    static_configs:
+      - targets: ["nifi-exporter:9103"]
+        labels:
+          cluster: local
+
+  - job_name: nifi-alert-relay
+    basic_auth:
+      username: alertmanager
+      password_file: /certs/alert-relay-password
+    static_configs:
+      - targets: ["nifi-alert-relay:9105"]
+
+  - job_name: nifi-builtin
+    scrape_interval: 30s
+    scrape_timeout: 20s
+    scheme: https
+    metrics_path: /nifi-api/flow/metrics/prometheus
+    params:
+      includedRegistries: ["NIFI", "JVM", "CONNECTION"]
+    honor_labels: false
+    tls_config:
+      ca_file: /certs/ca.pem
+      cert_file: /certs/prometheus.pem
+      key_file: /certs/prometheus.key
+    static_configs:
+      - targets: ["nifi-1:8443", "nifi-2:8443"]
+        labels:
+          cluster: local
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+)(?::\\d+)?"
+        target_label: node
+        replacement: "$1"
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: "nifi_(amount_(items_(queued|input|output)|bytes_(read|written)|threads_(active|terminated))|size_content_(queued|input|output)_total|percent_used_(count|bytes)|backpressure_(object|bytes)_threshold|backpressure_enabled|jvm_.*|time_to_(bytes|count)_backpressure_prediction)"
+        action: keep

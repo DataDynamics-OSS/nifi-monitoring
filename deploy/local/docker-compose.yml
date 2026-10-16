@@ -1,0 +1,176 @@
+# 로컬 NiFi 2.6.0 클러스터(CFM 4.12.0 NiFi 계열의 업스트림 빌드)와 모니터링 스택입니다.
+# API 샘플 수집과 전 구간 검증에 씁니다.
+#
+#   ./gen-certs.sh && docker compose up -d && python3 seed.py
+#   NiFi UI:      https://localhost:18443/nifi  (certs/admin.p12 등록, 비밀번호 localtest)
+#   exporter:     http://localhost:19103/metrics (prometheus / localtest)
+#   Prometheus:   http://localhost:19090
+#   Alertmanager: http://localhost:19093
+#   Grafana:      http://localhost:13000 (admin / localtest)
+#
+# 인증은 mTLS만 씁니다(AUTH=tls). CN=admin은 초기 관리자이고, CN=nifi-monitor는
+# seed.py가 만드는 exporter용 읽기 전용 identity입니다.
+
+x-nifi: &nifi
+  image: apache/nifi:2.6.0
+  entrypoint: ["/bin/sh", "/opt/nifi/local/nifi-entrypoint.sh"]
+  depends_on: [zookeeper]
+  volumes:
+    - ./nifi-entrypoint.sh:/opt/nifi/local/nifi-entrypoint.sh:ro
+    - ./certs:/opt/nifi/certs:ro
+  healthcheck:
+    test: ["CMD-SHELL", "bash -c '</dev/tcp/$$HOSTNAME/8443'"]
+    interval: 10s
+    retries: 30
+  environment: &nifi-env
+    AUTH: tls
+    INITIAL_ADMIN_IDENTITY: CN=admin
+    KEYSTORE_TYPE: PKCS12
+    KEYSTORE_PASSWORD: localtest
+    TRUSTSTORE_PATH: /opt/nifi/certs/truststore.p12
+    TRUSTSTORE_TYPE: PKCS12
+    TRUSTSTORE_PASSWORD: localtest
+    NIFI_SENSITIVE_PROPS_KEY: local-test-sensitive-key
+    NIFI_CLUSTER_IS_NODE: "true"
+    NIFI_CLUSTER_NODE_PROTOCOL_PORT: "11443"
+    NIFI_ZK_CONNECT_STRING: zookeeper:2181
+    NIFI_ELECTION_MAX_WAIT: 30 sec
+    NIFI_ELECTION_MAX_CANDIDATES: "2"
+    NIFI_JVM_HEAP_INIT: 1g
+    NIFI_JVM_HEAP_MAX: 1g
+    NIFI_WEB_PROXY_HOST: localhost:18443,localhost:18444
+
+services:
+  zookeeper:
+    image: zookeeper:3.9.3
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,srvr
+
+  nifi-1:
+    <<: *nifi
+    hostname: nifi-1
+    ports: ["18443:8443"]
+    environment:
+      <<: *nifi-env
+      KEYSTORE_PATH: /opt/nifi/certs/nifi-1.p12
+      NIFI_WEB_HTTPS_HOST: nifi-1
+
+  nifi-2:
+    <<: *nifi
+    hostname: nifi-2
+    ports: ["18444:8443"]
+    environment:
+      <<: *nifi-env
+      KEYSTORE_PATH: /opt/nifi/certs/nifi-2.p12
+      NIFI_WEB_HTTPS_HOST: nifi-2
+      NIFI_CONTENT_ARCHIVE_ENABLED: "false"
+    # scenarios.py "disk"가 호스트 디스크를 건드리지 않고 채울 수 있도록 content 저장소를
+    # 작게 둡니다(RepositoryDisk 알림 검증용).
+    volumes:
+      - ./nifi-entrypoint.sh:/opt/nifi/local/nifi-entrypoint.sh:ro
+      - ./certs:/opt/nifi/certs:ro
+      - type: tmpfs
+        target: /opt/nifi/nifi-current/content_repository
+        tmpfs: { size: 314572800, mode: 0o1777 }
+
+  nifi-exporter:
+    build: ../../exporter
+    image: nifi-exporter:local
+    depends_on: [nifi-1]
+    ports: ["19103:9103"]
+    volumes:
+      - ./exporter.yaml:/etc/nifi-exporter/config.yaml:ro
+      - ./certs:/certs:ro
+
+  # Provenance 온디맨드 조회 서비스입니다(exporter 이미지의 다른 진입점, 계정 CN=nifi-provenance).
+  # 장애 분석 대시보드의 그래프 링크가 http://localhost:19104로 엽니다.
+  provenance-query:
+    image: nifi-exporter:local
+    depends_on: [nifi-exporter]
+    entrypoint: ["nifi-provenance-query"]
+    command: ["--config", "/etc/nifi-exporter/config.yaml"]
+    ports: ["127.0.0.1:19104:9104"]
+    volumes:
+      - ./provenance-query.yaml:/etc/nifi-exporter/config.yaml:ro
+      - ./certs:/certs:ro
+
+  prometheus:
+    image: prom/prometheus:v2.53.4
+    depends_on: [nifi-exporter, alertmanager]
+    ports: ["19090:9090"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/rules:/etc/prometheus/rules:ro
+      - ./certs:/certs:ro
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    ports: ["19093:9093"]
+    volumes:
+      - ../alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ../alertmanager/templates:/etc/alertmanager/templates:ro
+      - ./certs/slack_webhook:/etc/alertmanager/slack_webhook:ro
+      - ./certs/smtp_password:/etc/alertmanager/smtp_password:ro
+      - ./certs/alert-relay-password:/etc/alertmanager/alert_relay_password:ro
+
+  # Alertmanager → 사용자 정의 HTTP 수신처 중계입니다(exporter 이미지의 다른 진입점).
+  nifi-alert-relay:
+    image: nifi-exporter:local
+    depends_on: [nifi-exporter, alert-sink]
+    entrypoint: ["nifi-alert-relay"]
+    command: ["--config", "/etc/nifi-alert-relay/config.yaml"]
+    ports: ["127.0.0.1:19107:9105"]
+    volumes:
+      - ./alert-relay.yaml:/etc/nifi-alert-relay/config.yaml:ro
+      - ./certs:/certs:ro
+
+  # 중계 대상 역할을 하는 시험용 수신처입니다. GET /requests로 받은 요청을 봅니다.
+  alert-sink:
+    image: python:3.11-slim
+    command: ["python3", "/app/alert_sink.py", "--port", "8080"]
+    ports: ["127.0.0.1:19108:8080"]
+    volumes:
+      - ./alert_sink.py:/app/alert_sink.py:ro
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    depends_on: [prometheus]
+    ports: ["13000:3000"]
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+      GF_SECURITY_ADMIN_PASSWORD: localtest
+      # 읽기 전용 익명 접근을 허용합니다. headless 화면 캡처(docs/diagrams/screenshots.py)용입니다
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards/nifi:ro
+
+  # 화면 캡처 전용입니다: docker compose --profile screenshots up -d nifi-ui-proxy
+  nifi-ui-proxy:
+    image: nginx:1.27.3-alpine
+    profiles: [screenshots]
+    depends_on: [nifi-1]
+    ports: ["127.0.0.1:18480:80"]
+    volumes:
+      - ./nifi-ui-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/certs:ro
+
+  # TLS·인증 없는 단일 노드 NiFi와 그 exporter입니다:
+  #   docker compose --profile plain up -d nifi-plain nifi-exporter-plain
+  #   NiFi UI http://localhost:18090/nifi , exporter http://localhost:19105/metrics
+  nifi-plain:
+    image: apache/nifi:2.6.0
+    profiles: [plain]
+    entrypoint: ["/bin/sh", "/opt/nifi/local/nifi-plain-entrypoint.sh"]
+    ports: ["127.0.0.1:18090:8080"]
+    volumes:
+      - ./nifi-plain-entrypoint.sh:/opt/nifi/local/nifi-plain-entrypoint.sh:ro
+
+  nifi-exporter-plain:
+    image: nifi-exporter:local
+    profiles: [plain]
+    depends_on: [nifi-plain]
+    ports: ["127.0.0.1:19105:9103"]
+    volumes:
+      - ./exporter-plain.yaml:/etc/nifi-exporter/config.yaml:ro

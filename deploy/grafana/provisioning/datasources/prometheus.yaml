@@ -1,0 +1,11 @@
+# Prometheus 데이터소스입니다. 모든 NiFi 대시보드가 uid "prometheus"를 참조합니다.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL}
+    isDefault: true
+    jsonData:
+      timeInterval: 15s   # nifi-exporter job의 Prometheus scrape_interval과 같습니다

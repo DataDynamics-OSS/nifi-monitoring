@@ -1,0 +1,14 @@
+# CFM용 nifi-provenance-query 설정입니다. 인증이 없으므로 별도 계정 없이 조회합니다.
+# 실제 주소는 환경변수 NIFI_BASE_URL(.env)로 덮어씁니다.
+nifi:
+  base_url: http://cfm-nifi.example.com:18081
+  cluster_name: cfm
+  timezone: America/New_York
+  auth: { mode: none }
+server:
+  log_format: json
+provenance:
+  listen: 0.0.0.0:9104
+  max_range: 1h
+  default_window: 5m
+  max_results: 1000

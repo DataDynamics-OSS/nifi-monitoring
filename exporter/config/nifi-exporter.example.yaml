@@ -1,0 +1,64 @@
+# nifi-exporter 설정입니다. 다음 환경변수가 값을 덮어씁니다:
+#   NIFI_BASE_URL, NIFI_USERNAME, NIFI_PASSWORD, NIFI_EXPORTER_LISTEN, NIFI_EXPORTER_LOG_LEVEL,
+#   NIFI_EXPORTER_BASIC_AUTH_PASSWORD
+nifi:
+  base_url: https://nifi.example.com:8443   # 클러스터 노드 하나 또는 로드밸런서 주소입니다
+  cluster_name: prod-nifi                  # 모든 메트릭의 `cluster` 레이블 값입니다
+  timezone: Asia/Seoul                     # NiFi 서버 시간대(IANA)입니다. heartbeat 문자열은 이 시간대의 약어를 씁니다
+  timeout: 10s
+  max_concurrency: 4
+  retries: 1
+  retry_backoff: 2s
+  tls:
+    ca_file: /etc/nifi-exporter/ca.pem
+    insecure_skip_verify: false
+  auth:
+    mode: bearer                 # bearer | mtls | none 중 하나입니다
+    username: nifi-monitor
+    password_file: /etc/nifi-exporter/password
+    refresh_margin: 5m           # JWT 만료 이만큼 전에 다시 로그인합니다
+    # mode: mtls
+    # cert_file: /etc/nifi-exporter/client.pem
+    # key_file: /etc/nifi-exporter/client-key.pem
+  # TLS·인증 없는 NiFi는 HTTP 주소와 인증 없음(none)을 씁니다. HTTP에는 none만 허용합니다
+  # (NiFi는 토큰을 HTTPS에서만 발급합니다). 이때 tls 설정은 쓰이지 않습니다.
+  #   base_url: http://nifi.example.com:8080
+  #   auth: { mode: none }
+
+collectors:
+  cluster:     { enabled: true,  interval: 15s }   # 단일 노드 NiFi는 자동으로 알아봅니다(clustered 0)
+  flow:        { enabled: true,  interval: 30s, exclude_pg_ids: [] }
+  diagnostics: { enabled: true,  interval: 30s }
+  bulletin:    { enabled: true,  interval: 30s, limit: 1000 }
+  # NiFi 스레드 풀 크기(/controller/config)와 활성 스레드(/flow/status)를 가져옵니다
+  controller:  { enabled: true,  interval: 30s }
+  # Process Group마다 GET /flow/process-groups/{id}를 한 번 호출합니다. 2.x status 스냅샷에
+  # 없는 Connection source/destination id와 Backpressure 임계치를 가져옵니다.
+  # 실패한 collector는 주기와 관계없이 30초 뒤 다시 시도합니다
+  topology:    { enabled: true,  interval: 300s, exclude_pg_ids: [] }
+
+server:
+  listen: 0.0.0.0:9103
+  log_level: INFO
+  log_format: json             # json | text 중 하나입니다
+  log_bulletin_messages: false # true면 Bulletin 원문을 JSON 로그 줄로 남깁니다. 레이블로는 절대 쓰지 않습니다
+  # 로그 파일입니다. 없으면 stdout으로 씁니다(Docker·systemd). 상대 경로는 실행 디렉토리 기준입니다.
+  # 파일이 log_max_size를 넘으면 .1 ~ .<log_backups>로 돌립니다
+  # log_file: /var/log/nifi-exporter/nifi-exporter.log
+  # log_max_size: 50MB
+  # log_backups: 5
+  # /metrics를 보호합니다(큐·processor 이름이 노출됩니다). /healthz, /readyz는 열어 둡니다.
+  # basic_auth:
+  #   username: prometheus
+  #   password_file: /etc/nifi-exporter/metrics-password   # 또는 NIFI_EXPORTER_BASIC_AUTH_PASSWORD를 씁니다
+
+# nifi-provenance-query만 읽는 절입니다(exporter는 무시합니다). 조회 서비스는 보통
+# /provenance 권한이 있는 다른 계정을 쓰므로, nifi 절을 바꾼 별도 설정 파일로 실행합니다.
+# provenance:
+#   listen: 0.0.0.0:9104
+#   max_range: 1h          # 넘으면 끝 시각 기준으로 줄입니다
+#   default_window: 5m     # at만 받으면 [at - window, at]을 조회합니다
+#   max_results: 1000
+#   query_timeout: 60s
+#   poll_interval: 1s
+#   max_concurrent: 2      # 넘으면 429로 거절합니다

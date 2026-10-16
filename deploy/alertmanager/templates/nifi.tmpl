@@ -1,0 +1,13 @@
+{{/* Slack 제목입니다: [FIRING:2] NiFiQueueNearBackpressure (prod-nifi) */}}
+{{ define "nifi.slack.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}{{ if .CommonLabels.cluster }} ({{ .CommonLabels.cluster }}){{ end }}
+{{- end }}
+
+{{/* Slack 본문입니다: 알림마다 한 줄이며, summary 다음에 description을 씁니다 */}}
+{{ define "nifi.slack.text" -}}
+{{ range .Alerts -}}
+{{ if eq .Status "firing" }}:red_circle:{{ else }}:white_check_mark:{{ end }} *{{ .Annotations.summary }}*
+{{ if .Annotations.description }}{{ .Annotations.description }}{{ end }}
+{{ if .Labels.pg_id }}pg: `{{ .Labels.pg_id }}` {{ end }}{{ if .Labels.node_id }}node: `{{ .Labels.node_id }}` {{ end }}severity: `{{ .Labels.severity }}`
+{{ end }}
+{{- end }}
