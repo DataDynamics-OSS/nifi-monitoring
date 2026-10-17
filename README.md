@@ -39,6 +39,8 @@ Apache NiFi 2.x 클러스터의 장애·병목을 감시하는 모니터링 구�
 
 ### 수집 (nifi-exporter)
 
+Prometheus에 metric 정보를 제공하는 서비스를 exporter라고 부릅니다. nifi-exporter는 nifi에서 정보를 수집해서 prometheus가 정보를 가져갈 수 있도록 HTTP 서비스를 제공합니다.
+
 | 영역 | 기능 |
 |---|---|
 | 클러스터 | 노드 수·연결 수, 노드별 상태(CONNECTED/DISCONNECTED/OFFLOADED…)·역할, heartbeat 경과 시간, 노드별 스레드·적체. 단일 노드(비클러스터) NiFi는 자동으로 알아봅니다(`nifi_cluster_clustered` 0) |
@@ -81,7 +83,7 @@ Apache NiFi 2.x 클러스터의 장애·병목을 감시하는 모니터링 구�
 
 ## 3. 빠른 시작 (로컬)
 
-NiFi 2.6.0 2노드 클러스터와 모니터링 전체를 로컬에서 띄웁니다. Docker와 Docker Compose가 필요합니다.
+NiFi 2.6.0 2노드 클러스터와 모니터링 전체를 로컬에서 실행합니다. Docker와 Docker Compose가 필요합니다.
 
 ```bash
 git clone https://github.com/DataDynamics-OSS/nifi-monitoring.git
@@ -553,7 +555,7 @@ cd deploy/local && docker compose --profile screenshots up -d nifi-ui-proxy
 cd ../.. && python3 docs/diagrams/screenshots.py                 # docs/images/screenshots/
 ```
 
-둘 다 headless Chromium을 쓰고, 화면 캡처에는 Node 22 이상이 필요합니다. NiFi UI는 클라이언트 인증서가 필요하므로 캡처할 때만 관리자 인증서를 대신 제시하는 프록시(`nifi-ui-proxy`, 127.0.0.1 전용)를 띄웁니다.
+둘 다 headless Chromium을 쓰고, 화면 캡처에는 Node 22 이상이 필요합니다. NiFi UI는 클라이언트 인증서가 필요하므로 캡처할 때만 관리자 인증서를 대신 제시하는 프록시(`nifi-ui-proxy`, 127.0.0.1 전용)를 실행합니다.
 
 ## 11. 저장소 구조와 관련 문서
 
