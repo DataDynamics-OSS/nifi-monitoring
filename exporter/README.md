@@ -53,6 +53,18 @@ cp config/nifi-exporter.example.yaml config.yaml   # 편집합니다
 curl -s localhost:9103/metrics | grep nifi_cluster_nodes
 ```
 
+인터넷이 차단된(airgap) 환경에서는 `packages/`의 오프라인 wheel로 설치합니다. 대상은 RHEL 9.6 / Python 3.11 / x86_64이며, 자세한 내용은 [packages/README.md](packages/README.md)에 있습니다.
+
+```bash
+cd exporter
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install --no-index --find-links packages/ -r packages/requirements.txt   # 의존성만
+pip install --no-index --find-links packages/ .                              # exporter 본체까지
+cp config/nifi-exporter.example.yaml config.yaml   # 편집합니다
+nifi-exporter --config config.yaml --check-config
+nifi-exporter --config config.yaml
+```
+
 환경변수로 덮어쓸 수 있는 값: `NIFI_BASE_URL`, `NIFI_USERNAME`, `NIFI_PASSWORD`,
 `NIFI_EXPORTER_LISTEN`, `NIFI_EXPORTER_LOG_LEVEL`, `NIFI_EXPORTER_BASIC_AUTH_PASSWORD`.
 설정 키 전체와 기본값은 루트 README 5장에 있습니다.
