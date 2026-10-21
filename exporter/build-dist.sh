@@ -6,7 +6,7 @@
 #   PIP_ARGS="--no-index --find-links wheels" ./build-dist.sh   내려받은 wheel로 빌드
 #
 # 의존 라이브러리는 빌드 Python 기준으로 고릅니다(예: typing_extensions는 3.13 미만에서만
-# 들어갑니다). 빌드 Python은 실행 서버의 Python보다 높지 않게, 되도록 3.11로 둡니다.
+# 들어갑니다). 빌드 Python은 실행 서버의 Python보다 높지 않게 둡니다(서버가 3.9면 3.9로).
 # 구성: bin/ config/ logs/ src/ lib/ (README "스크립트 실행" 참고)
 set -euo pipefail
 cd "$(dirname "$0")"

@@ -53,13 +53,14 @@ cp config/nifi-exporter.example.yaml config.yaml   # 편집합니다
 curl -s localhost:9103/metrics | grep nifi_cluster_nodes
 ```
 
-인터넷이 차단된(airgap) 환경에서는 `packages/`의 오프라인 wheel로 설치합니다. 대상은 RHEL 9.6 / Python 3.11 / x86_64이며, 자세한 내용은 [packages/README.md](packages/README.md)에 있습니다.
+인터넷이 차단된(airgap) 환경에서는 `packages/py<버전>/`의 오프라인 wheel로 설치합니다. 대상은 RHEL 9.6 / x86_64이며 Python 3.11(`packages/py3.11/`)과 3.9(`packages/py3.9/`)용을 각각 제공합니다. 자세한 내용은 [packages/README.md](packages/README.md)에 있습니다.
 
 ```bash
 cd exporter
+PKG=packages/py3.11          # Python 3.9면 packages/py3.9, python3.9
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install --no-index --find-links packages/ -r packages/requirements.txt   # 의존성만
-pip install --no-index --find-links packages/ .                              # exporter 본체까지
+pip install --no-index --find-links $PKG/ -r $PKG/requirements.txt   # 의존성만
+pip install --no-index --find-links $PKG/ .                          # exporter 본체까지
 cp config/nifi-exporter.example.yaml config.yaml   # 편집합니다
 nifi-exporter --config config.yaml --check-config
 nifi-exporter --config config.yaml
@@ -76,7 +77,7 @@ Docker: `docker build -t nifi-exporter:0.1.0 .`로 빌드하고 설정 파일을
 ## 스크립트 실행 (설치 없이)
 
 `make dist`(= `./build-dist.sh`)는 pip·venv 없이 실행하는 묶음 `dist/nifi-exporter-<버전>.tar.gz`를 만듭니다.
-서버에는 Python 3.11 이상만 있으면 됩니다. 스크립트가 `PYTHONPATH=src:lib`, `python -S`로 실행하므로 시스템 site-packages와 섞이지 않습니다.
+서버에는 Python 3.9 이상만 있으면 됩니다. 스크립트가 `PYTHONPATH=src:lib`, `python -S`로 실행하므로 시스템 site-packages와 섞이지 않습니다.
 
 ```
 bin/       start.sh stop.sh restart.sh status.sh check-config.sh  [exporter|provenance|relay|all]

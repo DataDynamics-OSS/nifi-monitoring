@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "nifi-exporter"
 version = "0.1.0"
 description = "Prometheus exporter for Apache NiFi 2.x (cluster, flow status, system diagnostics, bulletins)"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 dependencies = [
     "prometheus-client>=0.21,<1",
@@ -33,7 +33,7 @@ include = ["nifi_exporter*"]
 [tool.ruff]
 src = ["src", "tests"]
 line-length = 100
-target-version = "py311"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import timezone
 
 import pytest
 
@@ -52,7 +52,7 @@ def test_parse_queued():
 
 def test_parse_heartbeat_utc_and_default_zone():
     utc = parse_heartbeat("10/15/2026 01:00:00 UTC")
-    assert utc is not None and utc.tzinfo == UTC and utc.hour == 1
+    assert utc is not None and utc.tzinfo == timezone.utc and utc.hour == 1
     kst = parse_heartbeat("10/15/2026 10:00:00 KST", default_tz="Asia/Seoul")
     assert kst is not None and kst.timestamp() == utc.timestamp()
     assert parse_heartbeat("not a date") is None

@@ -30,8 +30,8 @@ py() { "$PYTHON" -S "$@"; }
 
 require_python() {
   command -v "$PYTHON" >/dev/null 2>&1 || die "Python을 찾을 수 없습니다: $PYTHON (config/env.sh의 PYTHON)"
-  py -c 'import sys; sys.exit(sys.version_info < (3, 11))' ||
-    die "Python 3.11 이상이 필요합니다: $("$PYTHON" -V 2>&1) (config/env.sh의 PYTHON)"
+  py -c 'import sys; sys.exit(sys.version_info < (3, 9))' ||
+    die "Python 3.9 이상이 필요합니다: $("$PYTHON" -V 2>&1) (config/env.sh의 PYTHON)"
   [ -d src/nifi_exporter ] || die "src/nifi_exporter가 없습니다: $EXPORTER_HOME/src"
   py -c 'import httpx, prometheus_client, yaml' 2>/dev/null ||
     die "lib/에 의존 라이브러리가 없습니다: $EXPORTER_HOME/lib (소스 디렉토리에서는 make lib)"

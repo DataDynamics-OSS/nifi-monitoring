@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 _DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(ms|s|m|h)?\s*$")
@@ -28,7 +28,7 @@ _HEARTBEAT_RE = re.compile(r"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2})(?:\s+(\S+))?
 
 def parse_duration(value: str | int | float) -> float:
     """'15s', '5m', '250ms', '1h' 또는 숫자(초)를 초 단위로 파싱합니다."""
-    if isinstance(value, int | float):
+    if isinstance(value, (int, float)):
         return float(value)
     m = _DURATION_RE.match(value)
     if not m:
@@ -103,11 +103,11 @@ def parse_heartbeat(value: str | None, default_tz: str = "UTC") -> datetime | No
     naive = datetime.strptime(m.group(1), "%m/%d/%Y %H:%M:%S")
     zone = (m.group(2) or "").upper()
     if zone in ("UTC", "GMT", "Z"):
-        return naive.replace(tzinfo=UTC)
+        return naive.replace(tzinfo=timezone.utc)
     try:
         return naive.replace(tzinfo=ZoneInfo(default_tz))
     except Exception:  # 설정의 시간대 이름을 모르면 UTC로 대체합니다
-        return naive.replace(tzinfo=UTC)
+        return naive.replace(tzinfo=timezone.utc)
 
 
 def to_float(value, default: float | None = None) -> float | None:

@@ -28,7 +28,7 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
 
@@ -84,12 +84,14 @@ def parse_time(value: str) -> float:
     value = value.strip()
     if value.isdigit():
         return int(value) / 1000.0
+    if value.endswith(("Z", "z")):  # Python 3.11 미만의 fromisoformat은 'Z'를 받지 않습니다
+        value = value[:-1] + "+00:00"
     try:
         dt = datetime.fromisoformat(value)
     except ValueError as e:
         raise QueryError(400, f"시각을 해석할 수 없습니다: {value!r}") from e
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
+        dt = dt.replace(tzinfo=timezone.utc)
     return dt.timestamp()
 
 
@@ -129,11 +131,11 @@ def parse_request(params: dict[str, str], cfg: ProvenanceConfig, cluster: str) -
 
 
 def _nifi_date(ts: float) -> str:
-    return datetime.fromtimestamp(ts, UTC).strftime(NIFI_DATE)
+    return datetime.fromtimestamp(ts, timezone.utc).strftime(NIFI_DATE)
 
 
 def _iso(ts: float) -> str:
-    return datetime.fromtimestamp(ts, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class ProvenanceQuery:

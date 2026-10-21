@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # bin/*.sh가 읽는 실행 환경입니다(셸 문법). 비밀번호를 넣는다면 chmod 600으로 둡니다.
 
-# Python 3.11 이상입니다. pip·venv는 필요 없습니다(src/·lib/를 그대로 씁니다)
+# Python 3.9 이상입니다. pip·venv는 필요 없습니다(src/·lib/를 그대로 씁니다)
 PYTHON=python3
 
 # 인자 없이 또는 all로 실행할 서비스입니다: exporter provenance relay
