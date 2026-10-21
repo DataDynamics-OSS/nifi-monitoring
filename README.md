@@ -4,7 +4,7 @@ Apache NiFi 2.x 클러스터의 장애·병목을 감시하는 모니터링 구�
 
 | 구성 요소 | 위치 | 역할 |
 |---|---|---|
-| nifi-exporter | `exporter/` | NiFi REST API를 읽어 Prometheus 메트릭으로 노출 (Python 3.11, Docker) |
+| nifi-exporter | `exporter/` | NiFi REST API를 읽어 Prometheus 메트릭으로 노출 (Python 3.9+, Docker) |
 | Provenance 조회 서비스 | `exporter/` (`nifi-provenance-query`) | Processor 하나와 시간 범위로 NiFi Provenance를 조회 (Grafana 링크에서 호출) |
 | 알림 중계 서비스 | `exporter/` (`nifi-alert-relay`) | Alertmanager 알림을 사용자 정의 HTTP API로 다시 보냄 (대상별 본문 템플릿·필터·재시도) |
 | Prometheus 설정·규칙 | `deploy/prometheus/` | 스크레이프 설정, recording rule 31개, alert rule 24개, 단위 테스트 |
@@ -74,7 +74,7 @@ Prometheus에 metric 정보를 제공하는 서비스를 exporter라고 부릅�
 |---|---|
 | NiFi | Apache NiFi 2.6.0 (CFM 4.12.0, 빌드 `2.6.0.4.12.0.x`). 다른 2.x는 [9.4](#94-nifi-업그레이드)의 절차로 응답을 확인한 뒤 사용 |
 | NiFi 계정 | 읽기 전용 계정(예: `nifi-monitor`). [4.1](#41-nifi-계정과-권한) 참조 |
-| exporter | Docker, 또는 Python 3.11 |
+| exporter | Docker, 또는 Python 3.9 이상 |
 | Prometheus | 2.42 이상 (`keep_firing_for` 사용). 검증 버전 2.53.4 |
 | Alertmanager | 검증 버전 0.28.1 |
 | Grafana | 11.6 이상 (11.3에서는 같은 대시보드로 가는 드릴다운 링크가 30초 새로고침 때까지 반영되지 않음). 검증 버전 11.6.0 |
@@ -561,7 +561,7 @@ cd ../.. && python3 docs/diagrams/screenshots.py                 # docs/images/s
 
 ```text
 nifi-monitoring/
-├── exporter/                 nifi-exporter, nifi-provenance-query, nifi-alert-relay (Python 3.11, Dockerfile, 테스트)
+├── exporter/                 nifi-exporter, nifi-provenance-query, nifi-alert-relay (Python 3.9+, Dockerfile, 테스트)
 ├── deploy/
 │   ├── prometheus/           스크레이프 설정, recording·alert 규칙, promtool 테스트
 │   ├── alertmanager/         라우팅·억제 설정, Slack 템플릿

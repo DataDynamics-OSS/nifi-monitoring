@@ -306,7 +306,7 @@ chmod 600 client-key.pem
 | 항목 | 버전 |
 |---|---|
 | NiFi | 2.6.0 (Cloudera CFM 4.12) |
-| Python | 3.11 이상 |
+| Python | 3.9 이상 (RHEL 9 기본 `python3` 3.9 사용 가능) |
 | Prometheus | 2.53.4 (2.42 이상 필요) |
 | Alertmanager | 0.28.1 |
 | Grafana | 11.6.0 (11.6 이상 필요) |
@@ -505,25 +505,24 @@ source /appdata/nifi-monitoring/nifi-mon.env
 echo $MON_HOME $RUN_USER          # /appdata/nifi-monitoring monitor 가 나와야 합니다
 ```
 
-#### Python 3.11
+#### Python 3.9 이상
 
 ```bash
-python3 --version     # 3.11 이상이면 이 항목은 건너뜁니다
+python3 --version     # 3.9 이상이면 이 항목은 건너뜁니다 (RHEL 9: 3.9, Ubuntu 22.04: 3.10, 24.04: 3.12)
 ```
 
-3.11보다 낮으면 설치합니다.
+3.9보다 낮으면(예: RHEL / Rocky 8의 기본 python3은 3.6) 설치합니다.
 
 ```bash
 # [root]
-# RHEL / Rocky 8·9
+# RHEL / Rocky 8
 dnf install -y python3.11
-# Ubuntu 22.04
-apt update && apt install -y python3.11 python3.11-venv
-# Ubuntu 24.04는 기본 python3(3.12)를 그대로 씁니다
+# RHEL / Rocky 9는 기본 python3(3.9)를 그대로 씁니다
+# Ubuntu 22.04 / 24.04는 기본 python3를 그대로 쓰되 venv 모듈만 설치합니다
 apt update && apt install -y python3-venv
 ```
 
-이후 명령의 `python3.11`은 설치된 실제 명령 이름(`python3.11` 또는 `python3`)으로 바꿔 씁니다.
+이후 명령의 `python3`는 설치된 실제 명령 이름(`python3` 또는 `python3.11`)으로 바꿔 씁니다.
 
 #### 서비스 파일 등록 (systemd)
 
@@ -834,17 +833,17 @@ curl -s http://nifi.example.com:8080/nifi-api/flow/about | grep -o '"timezone":"
 ### 3.1 Python 확인
 
 ```bash
-python3.11 --version     # 3.11 이상이 나오면 됩니다 (Ubuntu 24.04는 python3 --version)
+python3 --version     # 3.9 이상이 나오면 됩니다
 ```
 
-없으면 root에게 [1.8](#18-root-작업-모아-하기)의 Python 설치를 요청합니다. 이후 명령의 `python3.11`은 실제 명령 이름(`python3.11` 또는 `python3`)으로 바꿔 씁니다.
+없으면 root에게 [1.8](#18-root-작업-모아-하기)의 Python 설치를 요청합니다. 이후 명령의 `python3`는 실제 명령 이름(`python3` 또는 `python3.11`)으로 바꿔 씁니다.
 
 ### 3.2 설치
 
 **인터넷이 되는 서버**
 
 ```bash
-python3.11 -m venv $EXPORTER_HOME/venv
+python3 -m venv $EXPORTER_HOME/venv
 $EXPORTER_HOME/venv/bin/pip install --upgrade pip
 $EXPORTER_HOME/venv/bin/pip install $REPO/exporter
 ```
@@ -853,15 +852,19 @@ $EXPORTER_HOME/venv/bin/pip install $REPO/exporter
 
 ```bash
 # (인터넷 PC) 저장소의 exporter 디렉터리에서
-python3.11 -m pip wheel ./exporter -w wheels      # wheels/ 에 .whl 파일들이 생깁니다
+python3 -m pip wheel ./exporter -w wheels      # wheels/ 에 .whl 파일들이 생깁니다
 tar czf nifi-exporter-wheels.tgz wheels
 # → 서버의 $SRC_DIR 로 복사
 
 # (서버)
 cd $SRC_DIR && tar xzf nifi-exporter-wheels.tgz
-python3.11 -m venv $EXPORTER_HOME/venv
+python3 -m venv $EXPORTER_HOME/venv
 $EXPORTER_HOME/venv/bin/pip install --no-index --find-links $SRC_DIR/wheels nifi-exporter
 ```
+
+저장소의 `exporter/packages/py3.9/`·`exporter/packages/py3.11/`에는 RHEL 9.6 x86_64용 의존 wheel이
+미리 들어 있습니다. 인터넷 PC 없이 저장소만 옮길 수 있으면 `--find-links`에 서버 Python 버전에 맞는
+디렉터리를 주고 `$REPO/exporter`를 설치해도 됩니다([exporter/packages/README.md](exporter/packages/README.md) 참고).
 
 **확인**
 
@@ -987,16 +990,16 @@ journalctl -u nifi-exporter -n 50 --no-pager
 ### 3.5 (대안) 설치 없이 스크립트로 실행
 
 pip·venv 없이 **압축 파일 하나**를 풀고 `bin/start.sh`로 실행하는 방법입니다. 3.2~3.4 대신 씁니다.
-서버에는 Python 3.11 이상만 있으면 되고, 폐쇄망에도 tar 파일 하나만 옮기면 됩니다.
+서버에는 Python 3.9 이상만 있으면 되고, 폐쇄망에도 tar 파일 하나만 옮기면 됩니다.
 
 **묶음 만들기** (저장소가 있는 PC, 인터넷 필요)
 
 ```bash
 cd $REPO/exporter
-PYTHON=python3.11 make dist      # → dist/nifi-exporter-0.1.0.tar.gz (약 1.5MB)
+PYTHON=python3.9 make dist       # → dist/nifi-exporter-0.1.0.tar.gz (약 1.5MB)
 ```
 
-빌드 Python은 서버의 Python보다 높지 않게(3.11 권장) 둡니다. 의존 라이브러리를 빌드 Python 기준으로 고르기 때문입니다.
+빌드 Python은 서버의 Python과 같은 버전(RHEL 9 기본 python3이면 3.9)으로 둡니다. 의존 라이브러리를 빌드 Python 기준으로 고르고, PyYAML은 C 확장이라 버전이 다르면 서버에서 import되지 않기 때문입니다.
 
 **풀기와 구성**
 
@@ -1522,7 +1525,7 @@ curl -s -u alertmanager:$(cat $RELAY_CONF/password) localhost:9105/metrics \
 | 대시보드 폴더가 안 보임 | 등록 파일 위치 | `grep PROVISIONING_CFG_DIR $GRAFANA_ENV`가 `$GRAFANA_PROV`와 같은지, `$GRAFANA_DASH/*.json`이 있는지 확인. `journalctl -u grafana-server`에서 `provisioning` 오류 확인 |
 | `NiFiExporterDuplicate` 발화 | exporter가 2개 수집됨 | 같은 클러스터의 exporter는 하나만 남김 |
 | 알림이 하나도 안 옴 | 억제 중이거나 수신처 오류 | `:9093` 화면에서 알림 확인. 수집 장애 알림이 떠 있으면 다른 NiFi 알림은 일부러 억제됨 |
-| `python3.11: command not found` | Python 미설치 | root에게 [1.8](#18-root-작업-모아-하기)의 Python 설치 요청 |
+| `python3: command not found` | Python 미설치 | root에게 [1.8](#18-root-작업-모아-하기)의 Python 설치 요청 |
 | `prometheus: command not found` | `$BIN_DIR`가 `PATH`에 없음 | 경로 변수를 불러오지 않음. 아래 줄 참고 |
 | `/config.yaml: No such file`, `cp: missing destination` 등 경로가 이상함 | 새 터미널에서 경로 변수를 불러오지 않음 | `source /appdata/nifi-monitoring/nifi-mon.env` 후 다시 실행. `echo $EXPORTER_CONF`로 값 확인. 실행 계정은 `~/.bashrc`에 들어 있는지 확인(1.4) |
 
