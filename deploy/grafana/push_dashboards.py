@@ -15,8 +15,12 @@
   3. 폴더 NiFi를 만들고(이미 있으면 그대로) 대시보드를 같은 uid로 덮어씁니다(Editor 권한).
   4. 올린 대시보드를 다시 읽어 폴더와 provenance_url 값을 확인합니다.
 
-인증은 서비스 계정 토큰(--token, --token-file, 환경 변수 GRAFANA_TOKEN) 또는
---user admin:비밀번호(Basic)입니다. Grafana 주소는 --grafana 또는 GRAFANA_URL,
+인증은 둘 중 하나입니다.
+  - 서비스 계정 토큰: --token, --token-file(한 줄), 환경 변수 GRAFANA_TOKEN
+  - 사용자명·비밀번호(Basic): --username + --password 또는 --password-file(한 줄, exporter의
+    password_file과 같은 양식), 환경 변수 GRAFANA_USER·GRAFANA_PASSWORD.
+    --user 이름:비밀번호 한 값으로도 됩니다.
+Grafana 주소는 --grafana 또는 GRAFANA_URL,
 Provenance 주소는 --provenance-url 또는 NIFI_PROVENANCE_URL로 줍니다. Provenance 주소는
 Grafana 서버가 아니라 사용자 브라우저가 직접 여는 주소여야 합니다.
 
@@ -238,15 +242,28 @@ def auth_header(args: argparse.Namespace) -> str:
     token = args.token or os.environ.get("GRAFANA_TOKEN")
     if args.token_file:
         token = Path(args.token_file).read_text().strip()
-    if token and args.user:
-        sys.exit("토큰과 --user 중 하나만 지정하세요")
-    if token:
-        return f"Bearer {token}"
+
+    username = args.username or os.environ.get("GRAFANA_USER")
+    password = args.password or os.environ.get("GRAFANA_PASSWORD")
+    if args.password_file:
+        password = Path(args.password_file).read_text().strip()
     if args.user:
         if ":" not in args.user:
             sys.exit("--user는 이름:비밀번호 형식입니다")
-        return "Basic " + base64.b64encode(args.user.encode()).decode()
-    sys.exit("인증이 없습니다: --token, --token-file, GRAFANA_TOKEN 또는 --user를 지정하세요")
+        username, password = args.user.split(":", 1)
+
+    if token and (username or password):
+        sys.exit("토큰과 사용자명·비밀번호 중 하나만 지정하세요")
+    if token:
+        return f"Bearer {token}"
+    if username and password:
+        return "Basic " + base64.b64encode(f"{username}:{password}".encode()).decode()
+    if username or password:
+        sys.exit("사용자명과 비밀번호를 모두 지정하세요 (--username과 --password/--password-file)")
+    sys.exit(
+        "인증이 없습니다: 토큰(--token, --token-file, GRAFANA_TOKEN) 또는 "
+        "사용자명·비밀번호(--username, --password/--password-file, GRAFANA_USER/GRAFANA_PASSWORD)"
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -258,7 +275,10 @@ def parse_args() -> argparse.Namespace:
     )
     ap.add_argument("--token", help="서비스 계정 토큰 (GRAFANA_TOKEN)")
     ap.add_argument("--token-file", help="토큰을 담은 파일 (한 줄)")
-    ap.add_argument("--user", help="Basic 인증 이름:비밀번호 (예: admin:비밀번호)")
+    ap.add_argument("--username", help="Basic 인증 사용자명 (GRAFANA_USER)")
+    ap.add_argument("--password", help="Basic 인증 비밀번호 (GRAFANA_PASSWORD)")
+    ap.add_argument("--password-file", help="비밀번호를 담은 파일 (한 줄, password_file 양식)")
+    ap.add_argument("--user", help="Basic 인증을 이름:비밀번호 한 값으로 (예: admin:비밀번호)")
     ap.add_argument(
         "--provenance-url",
         default=os.environ.get("NIFI_PROVENANCE_URL"),

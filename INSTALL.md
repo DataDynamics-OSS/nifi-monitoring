@@ -1299,7 +1299,7 @@ chmod -R a+rX $MON_HOME/grafana                      # grafana 계정이 읽을 
 
 > 이미 다른 Prometheus 데이터소스가 "기본(isDefault)"으로 등록된 Grafana라면 `nifi-prometheus.yaml`의 `isDefault: true`를 `false`로 바꿉니다. 대시보드는 uid `prometheus`로 찾으므로 기본 여부와 상관없이 동작합니다.
 
-**Grafana 서버에 파일을 둘 수 없으면** (다른 팀이 운영하는 Grafana 등) 등록 파일 대신 `deploy/grafana/push_dashboards.py`로 데이터소스·폴더·대시보드 6개를 Grafana API로 올립니다. Grafana에서 서비스 계정(Admin, 데이터소스를 만들지 않으면 Editor)의 토큰을 발급받아 한 줄짜리 파일에 넣고 실행합니다. Provenance 링크 주소(7.3)와 시간대까지 한 번에 넣으므로 6.2·7.3의 파일 복사는 하지 않습니다.
+**Grafana 서버에 파일을 둘 수 없으면** (다른 팀이 운영하는 Grafana 등) 등록 파일 대신 `deploy/grafana/push_dashboards.py`로 데이터소스·폴더·대시보드 6개를 Grafana API로 올립니다. Grafana에서 서비스 계정(Admin, 데이터소스를 만들지 않으면 Editor)의 토큰을 발급받아 한 줄짜리 파일에 넣고 실행합니다. 토큰 대신 사용자명·비밀번호로 하려면 `--token-file` 자리에 `--username admin --password-file ~/.grafana-password`(비밀번호 한 줄, 5.1의 `password_file` 양식)를 씁니다. Provenance 링크 주소(7.3)와 시간대까지 한 번에 넣으므로 6.2·7.3의 파일 복사는 하지 않습니다.
 
 ```bash
 python3 $REPO/deploy/grafana/push_dashboards.py \

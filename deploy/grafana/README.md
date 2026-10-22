@@ -71,6 +71,6 @@ python3 push_dashboards.py \
 3. 폴더 **NiFi**(uid `nifi`)를 만들고 같은 uid의 대시보드를 덮어씁니다(Editor 권한). 다시 실행하면 version이 올라가며 덮어씁니다.
 4. 올린 대시보드를 다시 읽어 폴더와 `provenance_url` 값을 확인합니다.
 
-인증은 서비스 계정 토큰(`--token`, `--token-file`, 환경 변수 `GRAFANA_TOKEN`) 또는 `--user admin:비밀번호`입니다. 주소는 `GRAFANA_URL`, `NIFI_PROVENANCE_URL`, `PROMETHEUS_URL` 환경 변수로도 줄 수 있고, `--dry-run`은 생성 결과만 보여 줍니다. 사설 CA는 `--ca-file`로 지정합니다.
+인증은 서비스 계정 토큰(`--token`, `--token-file`, 환경 변수 `GRAFANA_TOKEN`) 또는 사용자명·비밀번호(`--username`과 `--password`/`--password-file`, 환경 변수 `GRAFANA_USER`/`GRAFANA_PASSWORD`, 또는 `--user admin:비밀번호`)입니다. `--password-file`은 exporter의 `password_file`과 같은 한 줄 평문 양식입니다. 주소는 `GRAFANA_URL`, `NIFI_PROVENANCE_URL`, `PROMETHEUS_URL` 환경 변수로도 줄 수 있고, `--dry-run`은 생성 결과만 보여 줍니다. 사설 CA는 `--ca-file`로 지정합니다.
 
 provisioning으로 이미 등록된 대시보드는 Grafana가 API 저장을 거부하므로 두 방식을 섞어 쓰지 않습니다. API로 올린 대시보드는 화면에서 고칠 수 있지만 원본은 `build_dashboards.py`이고, 고친 내용은 다음 실행 때 덮어씁니다.
