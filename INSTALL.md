@@ -1299,6 +1299,17 @@ chmod -R a+rX $MON_HOME/grafana                      # grafana 계정이 읽을 
 
 > 이미 다른 Prometheus 데이터소스가 "기본(isDefault)"으로 등록된 Grafana라면 `nifi-prometheus.yaml`의 `isDefault: true`를 `false`로 바꿉니다. 대시보드는 uid `prometheus`로 찾으므로 기본 여부와 상관없이 동작합니다.
 
+**Grafana 서버에 파일을 둘 수 없으면** (다른 팀이 운영하는 Grafana 등) 등록 파일 대신 `deploy/grafana/push_dashboards.py`로 데이터소스·폴더·대시보드 6개를 Grafana API로 올립니다. Grafana에서 서비스 계정(Admin, 데이터소스를 만들지 않으면 Editor)의 토큰을 발급받아 한 줄짜리 파일에 넣고 실행합니다. Provenance 링크 주소(7.3)와 시간대까지 한 번에 넣으므로 6.2·7.3의 파일 복사는 하지 않습니다.
+
+```bash
+python3 $REPO/deploy/grafana/push_dashboards.py \
+  --grafana http://<Grafana 서버>:3000 --token-file ~/.grafana-token \
+  --provenance-url http://<모니터링 서버>:9104 \
+  --prometheus-url http://<모니터링 서버>:9090 --timezone Asia/Seoul
+```
+
+마지막 줄에 `확인 완료: 폴더 NiFi에 대시보드 6개`가 나오면 성공입니다. 대시보드를 다시 올릴 때(11.1)도 같은 명령을 실행합니다. 자세한 옵션은 [deploy/grafana/README.md](deploy/grafana/README.md)에 있습니다.
+
 ### 6.3 시작
 
 ```bash
@@ -1409,7 +1420,7 @@ chmod -R a+rX $GRAFANA_DASH
 
 Grafana가 몇십 초 안에 바뀐 파일을 다시 읽습니다. 사용자 PC에서 9104 포트로 접속할 수 있어야 합니다(1.8의 방화벽).
 
-> 이 명령은 저장소의 `deploy/grafana/dashboards/*.json`을 바꿉니다. 저장소를 git으로 관리한다면 이 변경은 커밋하지 않습니다(`git checkout deploy/grafana/dashboards`로 되돌림).
+> 이 명령은 저장소의 `deploy/grafana/dashboards/*.json`을 바꿉니다. 저장소를 git으로 관리한다면 이 변경은 커밋하지 않습니다(`git checkout deploy/grafana/dashboards`로 되돌림). API로 올린 Grafana(6.2)라면 파일 대신 `push_dashboards.py`를 `--provenance-url`로 다시 실행합니다.
 
 ---
 

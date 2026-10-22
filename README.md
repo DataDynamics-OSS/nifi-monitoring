@@ -289,6 +289,13 @@ docker run -d --name nifi-alert-relay -p 9105:9105 -e OPS_API_TOKEN=... \
 | `provenance.query_timeout` / `poll_interval` | `60s` / `1s` | 질의 완료 대기 시간과 폴링 간격. 시간을 넘기면 504를 돌려주고 질의를 지웁니다 |
 | `provenance.max_concurrent` | `2` | 동시 조회 수. 넘으면 429로 거절합니다 |
 
+**`password_file` 양식.** 비밀번호 문자열 하나만 적은 평문 텍스트 파일입니다(UTF-8). 사용자명·`password=` 같은 접두어·따옴표·주석을 넣지 않습니다. 앞뒤 공백과 줄바꿈은 제거하고 나머지를 그대로 비밀번호로 쓰므로, 끝의 줄바꿈은 있어도 되지만 공백으로 시작하거나 끝나는 비밀번호는 쓸 수 없습니다. 빈 파일이면 기동에 실패합니다. `password`를 직접 적거나 환경변수(5.2)로 주면 `password_file`보다 우선합니다. 알림 중계 서비스의 `basic_auth.password_file`, Prometheus·Alertmanager의 `password_file`도 같은 양식이므로 하나의 파일을 양쪽에 둘 수 있습니다.
+
+```bash
+printf '%s\n' 'my-secret-password' > /etc/nifi-exporter/password
+chmod 600 /etc/nifi-exporter/password
+```
+
 ### 5.2 환경변수와 CLI
 
 | 환경변수 | 덮어쓰는 값 |

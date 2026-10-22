@@ -21,6 +21,7 @@
 build_dashboards.py                 대시보드를 코드로 정의합니다 → dashboards/*.json
 check_dashboards.py                 실제 Grafana에서 모든 패널 쿼리를 실행합니다
 check_drilldown.py                  표 셀 data link를 브라우저에서 클릭해 이동 결과를 확인합니다
+push_dashboards.py                  provisioning 파일을 둘 수 없을 때 Grafana HTTP API로 올립니다
 dashboards/*.json                   생성물입니다. 커밋하고 읽기 전용으로 provisioning합니다
 provisioning/datasources/prometheus.yaml   uid "prometheus", 주소는 $PROMETHEUS_URL
 provisioning/dashboards/nifi.yaml          파일 provider → /var/lib/grafana/dashboards/nifi
@@ -52,3 +53,24 @@ provider가 `allowUiUpdates: false`로 설정되어 있어 UI에서 바꾼 내�
 ## 배포
 
 `provisioning/`을 `/etc/grafana/provisioning`에, `dashboards/`를 `/var/lib/grafana/dashboards/nifi`에 마운트하고 `PROMETHEUS_URL`을 설정합니다(`deploy/local/docker-compose.yml` 참고). Grafana 11.6 이상이 필요합니다(11.6.0에서 확인). 11.3.0에서는 "하위 그룹으로" 링크를 누르면 주소와 변수는 바뀌지만 표가 다음 자동 새로고침(30초)까지 이전 그룹을 보여 줍니다.
+
+### API로 올리기
+
+Grafana 서버의 파일시스템에 provisioning 파일을 둘 수 없으면(다른 팀이 관리하는 Grafana, 컨테이너 플랫폼 등) `push_dashboards.py`가 대시보드 생성과 등록을 한 번에 합니다. 저장소의 `dashboards/*.json`은 바꾸지 않습니다.
+
+```bash
+python3 push_dashboards.py \
+  --grafana https://grafana.example.com --token-file ~/.grafana-token \
+  --provenance-url https://nifi-provenance.example.com \
+  --prometheus-url http://prometheus.example.com:9090 \
+  --timezone Asia/Seoul
+```
+
+1. `build_dashboards.py`로 대시보드 6개를 메모리에서 생성하고 `provenance_url`(사용자 브라우저가 여는 주소)과 시간대를 지정값으로 바꿉니다.
+2. `--prometheus-url`을 주면 uid `prometheus`인 Prometheus 데이터소스를 만들거나 주소를 고칩니다(Admin 권한). 주지 않으면 그 uid가 있는지만 확인합니다. 이미 다른 uid로 등록된 Prometheus를 쓰려면 `--datasource-uid`로 지정합니다.
+3. 폴더 **NiFi**(uid `nifi`)를 만들고 같은 uid의 대시보드를 덮어씁니다(Editor 권한). 다시 실행하면 version이 올라가며 덮어씁니다.
+4. 올린 대시보드를 다시 읽어 폴더와 `provenance_url` 값을 확인합니다.
+
+인증은 서비스 계정 토큰(`--token`, `--token-file`, 환경 변수 `GRAFANA_TOKEN`) 또는 `--user admin:비밀번호`입니다. 주소는 `GRAFANA_URL`, `NIFI_PROVENANCE_URL`, `PROMETHEUS_URL` 환경 변수로도 줄 수 있고, `--dry-run`은 생성 결과만 보여 줍니다. 사설 CA는 `--ca-file`로 지정합니다.
+
+provisioning으로 이미 등록된 대시보드는 Grafana가 API 저장을 거부하므로 두 방식을 섞어 쓰지 않습니다. API로 올린 대시보드는 화면에서 고칠 수 있지만 원본은 `build_dashboards.py`이고, 고친 내용은 다음 실행 때 덮어씁니다.
